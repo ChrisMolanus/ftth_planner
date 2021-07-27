@@ -131,3 +131,4 @@ xerces-c=3.2.3=h0e60522_2
 xz=5.2.5=h62dcd97_1
 zlib=1.2.11=h62dcd97_1010
 zstd=1.5.0=h6255e5f_0
+k-means-constrained

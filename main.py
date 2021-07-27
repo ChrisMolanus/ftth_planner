@@ -3,6 +3,9 @@ import networkx as nx
 
 
 import matplotlib.pyplot as plt
+import numpy as np
+
+from k_means_constrained import KMeansConstrained
 
 place_name = "Hoeilaart, Belgium"
 
@@ -14,8 +17,33 @@ try:
     G = nx.compose(G1, G2)
 except ValueError:
     G = G1
+
 # Get buildings
-gdf = ox.geometries_from_place(place_name, tags={'building': True})
+building_gdf = ox.geometries_from_place(place_name, tags={'building': True})
+
+# Get Building centroids
+building_centroids = list()
+for _, building in building_gdf.iterrows():
+    centroid = building['geometry'].centroid
+    building_centroids.append([centroid.xy[0][0], centroid.xy[1][0]])
+
+# Form clusters of buildings
+clf = KMeansConstrained(n_clusters=77, size_min=50, size_max=60, random_state=0)
+clf.fit_predict(building_centroids)
+building_clsuer_centers = clf.cluster_centers_
+builing_clsuer_lables = clf.labels_
+
+# Give each building cluster a color
+cmap = plt.get_cmap('jet')
+colors = cmap(np.linspace(0, 1.0, len(np.unique(np.unique(builing_clsuer_lables)))))
+label_colors = list()
+for label in builing_clsuer_lables:
+    label_colors.append(colors[label])
+
+# Street DataFrame
+street_gdf = ox.graph_to_gdfs(G, nodes=False)
+for _, edge in street_gdf.fillna('').iterrows():
+    print(edge['name'])
 
 # plot highway edges in yellow, railway edges in red
 ec = ['y' if 'highway' in d else 'r' for _, _, _, d in G.edges(keys=True, data=True)]
@@ -24,7 +52,7 @@ fig, ax = ox.plot_graph(G1, bgcolor='white', edge_color=ec,
                         show=False, close=False)
 
 # add building footprints in 50% opacity white
-ox.plot_footprints(gdf, ax=ax, color="orange", alpha=0.5)
+ox.plot_footprints(building_gdf, ax=ax, color=label_colors, alpha=0.5)
 plt.show()
 
 
