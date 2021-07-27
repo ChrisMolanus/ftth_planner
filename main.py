@@ -10,7 +10,7 @@ from k_means_constrained import KMeansConstrained
 place_name = "Hoeilaart, Belgium"
 
 
-# get graphs of different infrastructure types, then combine
+# Get graphs of different infrastructure types, then combine
 G1 = ox.graph_from_place(place_name, custom_filter='["highway"]', buffer_dist=200)
 try:
     G2 = ox.graph_from_place(place_name, custom_filter='["railway"~"rail"]')
@@ -51,9 +51,6 @@ fig, ax = ox.plot_graph(G1, bgcolor='white', edge_color=ec,
                         node_size=0, edge_linewidth=0.5,
                         show=False, close=False)
 
-# add building footprints in 50% opacity white
+# add building footprints in 50% opacity with cluster colors
 ox.plot_footprints(building_gdf, ax=ax, color=label_colors, alpha=0.5)
 plt.show()
-
-
-
