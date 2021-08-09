@@ -72,4 +72,6 @@ fig, ax = ox.plot_graph(G1, bgcolor='white', edge_color=ec,
 ox.plot_footprints(building_gdf, ax=ax, color=label_colors, alpha=0.5)
 plt.show()
 
+G_box = ox.graph_from_bbox( 50.78694, 50.77902, 4.48586, 4.49721, network_type='drive', simplify=True, retain_all=False)
+
 
