@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random as rd
 import math
+from shapely.geometry.linestring import LineString
 
 distance_from_center_of_road = 5 #
 #roads_gdf = ox.geometries_from_place(place_name, tags={'highway': True})
@@ -38,22 +39,51 @@ def get_trench_line(u, v, key, d, distance_from_center_of_road, last_line):
     """
     new_u_node = None
     new_v_node = None
+    new_d = {'osmid': 0, 'name': f"{d['name']} Trench", 'trench': "roadside", 'length': 0}
+    linestring = list()
     if 'geometry' in d:
         x = 0
         y = 0
         for sub_x, sub_y in d['geometry'].coords:
-            new_u_node, new_v_node = getparellel_line_points(last_v, {'x': sub_x, 'y': sub_y},
+            if last_line is None:
+                last_line = [(None, None), (u['x'], u['y'])]
+            new_u_node, new_v_node = getparellel_line_points({'x': last_line[1][0], 'y': last_line[1][1]},
+                                                             {'x': sub_x, 'y': sub_y},
                                                              distance_from_center_of_road)
+
             line = [(new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y'])]  # (new_u_node, new_v_node)
-            if last_line is not None:
-                x, y = get_intersection_point(line, last_line)
-                if x is not None:
-                    line = [(x, y), (new_v_node['x'], new_v_node['y'])]
+
+            x, y = get_intersection_point(line, last_line)
+            linestring.append((x, y))
+            if x is not None:
+                line = [(x, y), (new_v_node['x'], new_v_node['y'])]
             last_line = line
+
+            dx = x - new_v_node['x']
+            dy = y - new_v_node['y']
+            road_length = math.sqrt(dx ** 2 + dy ** 2)
+            new_d['length'] += road_length
+
+        new_d['geometry'] = LineString(linestring)
+
     else:
         new_u_node, new_v_node = getparellel_line_points(u, v, distance_from_center_of_road)
-        new_edges.append((new_u_node, new_v_node))
-    return new_u_node, new_v_node, 1, {**new_u_node, 'street_count': 1}, last_line
+
+        line = [(new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y'])]  # (new_u_node, new_v_node)
+        if last_line is not None:
+            x, y = get_intersection_point(line, last_line)
+            if x is not None:
+                line = [(x, y), (new_v_node['x'], new_v_node['y'])]
+                new_u_node = {'x': x, 'y': y}
+        last_line = line
+
+        dx = new_u_node['x'] - new_v_node['x']
+        dy = new_u_node['y'] - new_v_node['y']
+        road_length = math.sqrt(dx ** 2 + dy ** 2)
+        new_d['length'] = road_length
+
+
+    return new_u_node, new_v_node, key, new_d, last_line
 
 
 def getparellel_line_points(u_node, v_node, distance_from_center_of_road):
@@ -102,9 +132,9 @@ for u, v, key, d in G_box.edges(keys=True, data=True):
     print(u)
     new_u_node, new_v_node, new_key, new_d, last_line = get_trench_line(G_box.nodes[u], G_box.nodes[v], key, d,
                                                                         distance_from_center_of_road, last_line)
-    new_edges.append((new_u_node, new_v_node))
+    new_edges.append((new_u_node, new_v_node, new_key, new_d))
 
-for new_u_node, new_v_node in new_edges:
+for new_u_node, new_v_node, new_key, new_d in new_edges:
     node_id += 1
     u = node_id
     node_id += 1
@@ -117,7 +147,7 @@ for new_u_node, new_v_node in new_edges:
 
     # print(f"u={u} v={v}")
     # G_trenches.add_edge(u, v, key=1, d={**new_u_node, 'street_count':1})
-    G_box.add_edge(u, v, key=1, d={**new_u_node, 'street_count': 1})
+    G_box.add_edge(u, v, key=key, d=new_d)
 
 ec = ['y' if 'highway' in d else 'r' for _, _, _, d in G_box.edges(keys=True, data=True)]
 fig, ax = ox.plot_graph(G_box, bgcolor='white', edge_color=ec,
