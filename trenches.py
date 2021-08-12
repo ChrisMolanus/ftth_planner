@@ -2,6 +2,7 @@ from typing import Dict
 
 import osmnx as ox
 import networkx as nx
+import itertools
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -128,12 +129,30 @@ def getparellel_line_points(u_node, v_node, distance_from_center_of_road):
 def get_edges(g_box, distance_from_center_of_road = 0.0001):
     new_edges = list()
     osmid = 8945376
+    road_node_to_trench_nodes = dict()
+    last_d = dict()
     for u, v, key, d in G_box.edges(keys=True, data=True):
+        if u not in road_node_to_trench_nodes:
+            road_node_to_trench_nodes[u] = list()
+        if v not in road_node_to_trench_nodes:
+            road_node_to_trench_nodes[v] = list()
+
         new_u_node, new_v_node, new_key, new_d = get_trench_line(g_box.nodes[u], g_box.nodes[v], key, d,
                                                                  distance_from_center_of_road, osmid)
+        road_node_to_trench_nodes[u].append(new_u_node)
+        road_node_to_trench_nodes[v].append(new_v_node)
 
         new_edges.append((new_u_node, new_v_node, new_key, new_d))
+        d1 = new_d.copy()
+        if 'geometry' in d1:
+            del d1['geometry']
+        last_d[u] = d1
+        last_d[v] = d1
         osmid += 1
+
+    for node_id, trench_nodes in road_node_to_trench_nodes.items():
+        for n1, n2 in itertools.combinations(trench_nodes, 2):
+            new_edges.append((n1, n2, 1, last_d[node_id]))
     return new_edges
 
 
