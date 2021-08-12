@@ -133,7 +133,7 @@ dependencies:
   - conda-forge::xz=5.2.5=h62dcd97_1
   - conda-forge::zlib=1.2.11=h62dcd97_1010
   - conda-forge::zstd=1.5.0=h6255e5f_0
-  - conda-forge::pip:
+  - pip:
     - absl-py==0.13.0
     - k-means-constrained==0.6.0
     - ortools==9.0.9048
