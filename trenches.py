@@ -159,6 +159,7 @@ def fix_intersecting_trenches(trench1, trench2):
     except Exception:
         return False
 
+
 def get_edges(g_box, distance_from_center_of_road = 0.0001):
     new_edges = dict()
     osmid = 8945376
@@ -176,8 +177,6 @@ def get_edges(g_box, distance_from_center_of_road = 0.0001):
             node_as_v[v] = list()
         node_as_v[v].append(line_key)
 
-
-
         new_u_node, new_v_node, new_key, new_d = get_trench_line(g_box.nodes[u], g_box.nodes[v], key, d,
                                                                  distance_from_center_of_road, osmid)
         road_node_to_trench_nodes[line_key]['trench_u'] = new_u_node
@@ -192,20 +191,18 @@ def get_edges(g_box, distance_from_center_of_road = 0.0001):
         last_d[v] = d1
         osmid += 1
 
+    # TODO: just connect all point and remove intersecting lines (both both of them)
     for node_id, node in g_box.nodes.items():
-        for v_line_keys in node_as_v[node_id]:
-            v_trench = road_node_to_trench_nodes[v_line_keys]
-            for u_line_keys in node_as_u[node_id]:
-                u_trench = road_node_to_trench_nodes[u_line_keys]
-                if u_trench['v'] != v_trench['u']:
+        if node['street_count'] == 2:
+            for v_line_keys in node_as_v[node_id]:
+                v_trench = road_node_to_trench_nodes[v_line_keys]
+                for u_line_keys in node_as_u[node_id]:
+                    u_trench = road_node_to_trench_nodes[u_line_keys]
                     if not fix_intersecting_trenches(u_trench['trench'], v_trench['trench']):
-                        new_edges.append((v_trench['trench_v'], u_trench['trench_u'], 1, last_d[node_id]))
-
+                        if u_trench['v'] != v_trench['u']:
+                            new_edges.append((v_trench['trench_v'], u_trench['trench_u'], 1, last_d[node_id]))
 
     return list(new_edges.values())
-
-
-
 
 
 G_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, network_type='drive', simplify=True, retain_all=False)
