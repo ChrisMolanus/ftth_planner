@@ -10,7 +10,7 @@ import random as rd
 import math
 from shapely.geometry.linestring import LineString
 
-distance_from_center_of_road = 5
+distance_from_center_of_road = 0.0001
 
 
 def point_on_circle(center, radius, radian):
@@ -27,6 +27,7 @@ class TrenchCorner(dict):
         self['x'] = x
         self['y'] = y
         self['trench_count'] = trench_count
+        self['street_count'] = 1
 
     def __cmp__(self, other):
         return self['x'] == other['x'] and self['y'] == other['y']
@@ -40,8 +41,10 @@ class TrenchCorner(dict):
 
 def get_trench_corners(G_box):
     trench_corners = dict()
+    road_crossing = dict()
+    #node_id = 362555986
+    node_id = 400000000#G_box.number_of_nodes()
     for u, current_none in G_box.nodes(data=True):
-        print(current_none)
         neighbors = dict()
         for v in G_box.neighbors(u):
             neighbor = G_box.nodes[v]
@@ -56,6 +59,8 @@ def get_trench_corners(G_box):
         last_radian = None
         last_v = None
         last_street = None
+        last_node_id = None
+        first_node_id = None
         for radian in sorted_vs:
             neighbor = G_box.nodes[v]
             v = neighbors[radian]
@@ -64,16 +69,23 @@ def get_trench_corners(G_box):
                 print("Crap len(streets) > 1")
             street = streets[0]
             street_id = str(street['osmid'])
-            print(street)
             if last_radian is not None:
-                trench_corner_radian = radian - last_radian
                 between_radian = radian + (radian - last_radian)
                 x, y = point_on_circle(current_none, distance_from_center_of_road, between_radian)
                 node = TrenchCorner(x, y, 2)
                 if street_id not in trench_corners:
                     trench_corners[street_id] = set()
-                trench_corners[street_id].add(node)
-                trench_corners[last_street].add(node)
+                if node not in trench_corners[first_street] and node not in trench_corners[last_street]:
+                    node_id += 1
+                    node['node_for_adding'] = node_id
+                    trench_corners[street_id].add(node)
+                    trench_corners[last_street].add(node)
+
+                if last_node_id is not None:
+                    road_crossing[last_street] = (last_node_id, node_id)
+                else:
+                    first_node_id = node_id
+                last_node_id = node_id
             else:
                 first_radian = radian
                 first_street = street_id
@@ -82,14 +94,22 @@ def get_trench_corners(G_box):
             last_v = v
             last_street = street_id
 
-        between_radian = last_radian + (last_radian - first_radian)
-        x, y = point_on_circle(current_none, distance_from_center_of_road, between_radian)
-        node = TrenchCorner(x, y, 2)
-        trench_corners[first_street].add(node)
-        trench_corners[last_street].add(node)
+        if len(sorted_vs) > 1:
+            between_radian = last_radian + (last_radian - first_radian)
+            x, y = point_on_circle(current_none, distance_from_center_of_road, between_radian)
+            node = TrenchCorner(x, y, 2)
+            if node not in trench_corners[first_street] and node not in trench_corners[last_street]:
+                node_id += 1
+                node['node_for_adding'] = node_id
+                trench_corners[first_street].add(node)
+                trench_corners[last_street].add(node)
+                road_crossing[last_street] = (node_id, first_node_id)
+
+
+
 
         # TODO: add road cross trench in order of sorted_vs
-    return trench_corners
+    return trench_corners, road_crossing
 
 def isBetween(a, b, c):
     crossproduct = (c[1] - a[1]) * (b[0] - a[0]) - (c[0] - a[0]) * (b[1] - a[1])
@@ -109,8 +129,11 @@ def isBetween(a, b, c):
     return True
 
 
-def intersection_between_points(line1, line2):
+def intersection_between_points(l1, l2):
     # TODO: use 'x' and 'y' instead of 0 and 1
+    line1 = (l1[0]['x'], l1[0]['y']),(l1[1]['x'], l1[1]['y'])
+    line2 = (l2[0]['x'], l2[0]['y']), (l2[1]['x'], l2[1]['y'])
+
     xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
     ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
@@ -126,23 +149,40 @@ def intersection_between_points(line1, line2):
     d = (det(*line1), det(*line2))
     x = det(d, xdiff) / div
     y = det(d, ydiff) / div
-    if isBetween(line1[0], line1[1], (x, y)):
+    if isBetween((line1[0][0], line1[0][1]),
+                 (line1[1][0], line1[1][1]),
+                 (x, y)):
         return True
     else:
         return False
 
 G_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, network_type='drive', simplify=True, retain_all=True)
 
-trench_corners = get_trench_corners(G_box)
+trench_corners, road_crossing = get_trench_corners(G_box)
+
+for osmid, corners in trench_corners.items():
+    for corner in corners:
+        G_box.add_node(**corner)
+
+for u, current_none in G_box.nodes(data=True):
+    print(f"{u} {current_none}")
+
 
 for u, v, key, street in G_box.edges(keys=True, data=True):
-    print(street)
+    print(f"{u} {v} {key} {street}")
     street_id = str(street['osmid'])
     if street_id in trench_corners:
         corners = trench_corners[street_id]
         for point_pair in list(itertools.combinations(corners, 2)):
-            if not intersection_between_points((u, v), point_pair):
-                pass
+            u_node = G_box.nodes[u]
+            v_node = G_box.nodes[v]
+            if not intersection_between_points((u_node, v_node), point_pair):
+                G_box.add_edge(u_for_edge=point_pair[0]['node_for_adding'],
+                               v_for_edge=point_pair[1]['node_for_adding'],
+                               key=1, osmid=8945376,
+                               oneway=False,
+                               name=f"trench {street_id}",
+                               length=225.493)
                 # TODO: Create trench line
 
 # TODO: Add corners as node
