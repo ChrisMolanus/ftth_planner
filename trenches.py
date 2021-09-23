@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random as rd
 import math
+
+from shapely.geometry import Point
 from shapely.geometry.linestring import LineString
 
 distance_from_center_of_road = 5 #
@@ -32,6 +34,45 @@ def get_intersection_point(line1, line2):
     x = det(d, xdiff) / div
     y = det(d, ydiff) / div
     return x, y
+
+def get_nearest_road(G, point):
+    """
+    Return the nearest road to a pair of coordinates.
+    Pass in the graph representing the road network and a tuple with the
+    coordinates. We first get all the roads in the graph. Secondly we
+    compute the distance from the coordinates to the segments determined
+    by each road. The last step is to sort the road segments in ascending
+    order based on the distance from the coordinates to the road.
+    In the end, the first element in the list of roads will be the closest
+    road that we will return as a tuple containing the shapely geometry and
+    the u, v nodes.
+    Parameters
+    ----------
+    G : networkx multidigraph
+    point : tuple
+        The (lat, lng) or (y, x) point for which we will find the nearest node
+        in the graph
+    Returns
+    -------
+    closest_road_to_point : tuple
+        A geometry object representing the segment and the coordinates of the two
+        nodes that determine the road section, u and v, the OSM ids of the nodes.
+    """
+    gdf = ox.graph_to_gdfs(G, nodes=False, fill_edge_geometry=True)
+    print(gdf.keys())
+    graph_roads = gdf[["geometry", "u", "v"]].values.tolist()
+
+    roads_with_distances = [
+        (
+            graph_road,
+            Point(tuple(reversed(point))).distance(graph_road[0])
+        )
+        for graph_road in graph_roads
+    ]
+
+    roads_with_distances = sorted(roads_with_distances, key=lambda x: x[1])
+    closest_road_to_point = roads_with_distances[0][0]
+    return closest_road_to_point
 
 
 def isBetween(a, b, c):
@@ -91,6 +132,13 @@ def get_trench_line(u, v, key, d, distance_from_center_of_road, osmid):
                                                                  {'x': sub_x, 'y': sub_y, 'street_count': 1},
                                                                  distance_from_center_of_road)
 
+                # x, y = get_intersection_point([(last_road_point[0],last_road_point[1]),(sub_x, sub_y)],
+                #                               [(new_u_node['x'], new_u_node['y']),
+                #                               (new_v_node['x'], new_v_node['y'])])
+
+
+
+
                 if last_line is not None:
                     # Not first line
                     x, y = get_intersection_point(last_line,
@@ -130,6 +178,7 @@ def get_trench_line(u, v, key, d, distance_from_center_of_road, osmid):
         dy = new_u_node['y'] - new_v_node['y']
         road_length = math.sqrt(dx ** 2 + dy ** 2)
         new_d['length'] = road_length
+
 
     return new_u_node, new_v_node, key, new_d
 
@@ -209,7 +258,7 @@ def get_edges(g_box, distance_from_center_of_road = 0.0001):
     node_as_u = dict()
     node_as_v = dict()
     last_d = dict()
-    for u, v, key, d in G_box.edges(keys=True, data=True):
+    for u, v, key, d in g_box.edges(keys=True, data=True):
         line_key = "_".join([str(u), str(v)])
         road_node_to_trench_nodes[line_key] = {'u': u, 'v': v}
         if u not in node_as_u:
@@ -221,6 +270,45 @@ def get_edges(g_box, distance_from_center_of_road = 0.0001):
 
         new_u_node, new_v_node, new_key, new_d = get_trench_line(g_box.nodes[u], g_box.nodes[v], key, d,
                                                                  distance_from_center_of_road, osmid)
+        for w in G_box.neighbors(u):
+            neighbor = G_box.nodes[w]
+            if intersection_between_points(((g_box.nodes[u]['x'], g_box.nodes[u]['y']), (neighbor['x'], neighbor['y']))
+                    , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y']))):
+                x, y = get_intersection_point(((g_box.nodes[u]['x'], g_box.nodes[u]['y']), (neighbor['x'], neighbor['y']))
+                    , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y'])))
+                if point_distance(new_v_node, (x, y)) < point_distance(new_u_node, (x, y)):
+                    new_v_node['x'] = x
+                    new_v_node['y'] = y
+                else:
+                    new_u_node['x'] = x
+                    new_u_node['y'] = y
+
+        for w in G_box.neighbors(v):
+            neighbor = G_box.nodes[w]
+            if intersection_between_points(((g_box.nodes[v]['x'], g_box.nodes[v]['y']), (neighbor['x'],neighbor['y']))
+                    , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y']))):
+                x, y = get_intersection_point(((g_box.nodes[v]['x'], g_box.nodes[v]['y']), (neighbor['x'],neighbor['y']))
+                    , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y'])))
+                if point_distance(new_v_node, (x, y)) < point_distance(new_u_node, (x, y)):
+                    new_v_node['x'] = x
+                    new_v_node['y'] = y
+
+                else:
+                    new_u_node['x'] = x
+                    new_u_node['y'] = y
+
+
+
+        # tmp = ox.nearest_edges(g_box, new_u_node['x'], new_u_node['y'])
+        # print(tmp)
+        # new_u_node['x'] = tmp[1]
+        # new_u_node['y'] = tmp[0]
+        #
+        # tmp = ox.nearest_edges(g_box, new_v_node['x'], new_v_node['y'], interpolate=1)
+        # print(tmp)
+        # new_v_node['x'] = tmp[1]
+        # new_v_node['y'] = tmp[0]
+
         road_node_to_trench_nodes[line_key]['trench_u'] = new_u_node
         road_node_to_trench_nodes[line_key]['trench_v'] = new_v_node
 
@@ -233,51 +321,86 @@ def get_edges(g_box, distance_from_center_of_road = 0.0001):
         last_d[v] = d1
         osmid += 1
 
-    # TODO: just connect all point and remove intersecting lines (both both of them)
-    candidate_edges = dict()
-    remove_candidate_edges = set()
-    for node_id, node in g_box.nodes.items():
-        points = list()
-        for u_line_keys in node_as_u[node_id]:
-            u_trench = road_node_to_trench_nodes[u_line_keys]
-            points.append(u_trench['trench_u'])
-        for v_line_keys in node_as_v[node_id]:
-            v_trench = road_node_to_trench_nodes[v_line_keys]
-            points.append(v_trench['trench_v'])
-        for point_pair in list(itertools.combinations(points, 2)):
-            line_key = "_".join([str(point_pair[0]), str(point_pair[1])])
-            d = last_d[node_id]
-            d['length'] = node_distance(point_pair[0], point_pair[1])
-            candidate_edges[line_key] = (point_pair[0], point_pair[1], 1, d)
-        for line_key_pair in list(itertools.combinations(candidate_edges.keys(), 2)):
-            edge1 = candidate_edges[line_key_pair[0]]
-            edge2 = candidate_edges[line_key_pair[1]]
+    for key1 in new_edges:
+        for key2 in new_edges:
+            edge1 = new_edges[key1]
+            edge2 = new_edges[key2]
+
             if intersection_between_points(((edge1[0]['x'], edge1[0]['y']), (edge1[1]['x'], edge1[1]['y'])),
                                            ((edge2[0]['x'], edge2[0]['y']), (edge2[1]['x'], edge2[1]['y']))):
-                if line_key_pair[0] in remove_candidate_edges or line_key_pair[1] in remove_candidate_edges:
-                    pass
-                else:
-                    if node_distance(edge1[0], edge1[1]) < node_distance(edge2[0], edge2[1]):
-                        remove_candidate_edges.add(line_key_pair[0])
-                    else:
-                        remove_candidate_edges.add(line_key_pair[1])
-        for line_key, edge in candidate_edges.items():
-            if line_key not in remove_candidate_edges:
-                new_edges[line_key] = edge
+                x, y = get_intersection_point(((edge1[0]['x'], edge1[0]['y']), (edge1[1]['x'], edge1[1]['y'])),
+                                              ((edge2[0]['x'], edge2[0]['y']), (edge2[1]['x'], edge2[1]['y'])))
+                # if point_distance(edge1[0], (x, y)) < point_distance(edge1[1], (x, y)):
+                #     edge1[0]['x'] = x
+                #     edge1[0]['y'] = y
+                # else:
+                #     edge1[1]['x'] = x
+                #     edge1[1]['y'] = y
+                # if point_distance(edge2[0], (x, y)) < point_distance(edge2[1], (x, y)):
+                #     edge2[0]['x'] = x
+                #     edge2[0]['y'] = y
+                # else:
+                #     edge2[1]['x'] = x
+                #     edge2[1]['y'] = y
+                #new_edges[key1] = edge1
+                #new_edges[key2] = edge2
             else:
-                print("Removed")
+                pass
 
 
-
+        #print(get_nearest_road(G_box, new_u_node))
+    # TODO: just connect all point and remove intersecting lines (both both of them)
+    # candidate_edges = dict()
+    # remove_candidate_edges = set()
     # for node_id, node in g_box.nodes.items():
-    #     if node['street_count'] == 2:
-    #         for u_line_keys in node_as_u[node_id]:
-    #             u_trench = road_node_to_trench_nodes[u_line_keys]
-    #             for v_line_keys in node_as_v[node_id]:
-    #                 v_trench = road_node_to_trench_nodes[v_line_keys]
-    #                 if not fix_intersecting_trenches(u_trench['trench'], v_trench['trench']):
-    #                     if u_trench['v'] != v_trench['u']:
-    #                         new_edges.append((v_trench['trench_v'], u_trench['trench_u'], 1, last_d[node_id]))
+    #     points = list()
+    #     for u_line_keys in node_as_u[node_id]:
+    #         u_trench = road_node_to_trench_nodes[u_line_keys]
+    #         points.append(u_trench['trench_u'])
+    #     for v_line_keys in node_as_v[node_id]:
+    #         v_trench = road_node_to_trench_nodes[v_line_keys]
+    #         points.append(v_trench['trench_v'])
+    #     for point_pair in list(itertools.combinations(points, 2)):
+    #         line_key = "_".join([str(point_pair[0]), str(point_pair[1])])
+    #         d = last_d[node_id]
+    #         d['length'] = node_distance(point_pair[0], point_pair[1])
+    #         candidate_edges[line_key] = (point_pair[0], point_pair[1], 1, d)
+    #
+    #     for line_key_pair in candidate_edges.keys():
+    #         edge = candidate_edges[line_key_pair]
+    #
+    #     for line_key_pair in list(itertools.combinations(candidate_edges.keys(), 2)):
+    #         edge1 = candidate_edges[line_key_pair[0]]
+    #         edge2 = candidate_edges[line_key_pair[1]]
+    #         if intersection_between_points(((edge1[0]['x'], edge1[0]['y']), (edge1[1]['x'], edge1[1]['y'])),
+    #                                        ((edge2[0]['x'], edge2[0]['y']), (edge2[1]['x'], edge2[1]['y']))):
+    #             if line_key_pair[0] in remove_candidate_edges or line_key_pair[1] in remove_candidate_edges:
+    #                 pass
+    #             else:
+    #                 if node_distance(edge1[0], edge1[1]) < node_distance(edge2[0], edge2[1]):
+    #                     remove_candidate_edges.add(line_key_pair[0])
+    #                 else:
+    #                     remove_candidate_edges.add(line_key_pair[1])
+    #     for line_key, edge in candidate_edges.items():
+    #         if line_key not in remove_candidate_edges:
+    #             new_edges[line_key] = edge
+    #             print(edge)
+    #         else:
+    #             print("Removed")
+    #
+    #
+    #
+    # for node_id, node in g_box.nodes.items():
+    #     if node['street_count'] != 1:
+    #          for u_line_keys in node_as_u[node_id]:
+    #              u_trench = road_node_to_trench_nodes[u_line_keys]
+    #              print(u_trench['trench'])
+    #              for v_line_keys in node_as_v[node_id]:
+    #                  v_trench = road_node_to_trench_nodes[v_line_keys]
+    #                  if not fix_intersecting_trenches(u_trench['trench'], v_trench['trench']):
+    #                      if u_trench['v'] != v_trench['u']:
+    #                          new_edges.append((v_trench['trench_v'], u_trench['trench_u'], 1, last_d[node_id]))
+
 
     return list(new_edges.values())
 
