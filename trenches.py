@@ -320,11 +320,9 @@ def get_edges(g_box, distance_from_center_of_road = 0.0001):
         last_d[u] = d1
         last_d[v] = d1
         osmid += 1
-
-    for key1 in new_edges:
-        for key2 in new_edges:
-            edge1 = new_edges[key1]
-            edge2 = new_edges[key2]
+        for point_pair in list(itertools.combinations(new_edges.keys(), 2)):
+            edge1 = new_edges[point_pair[0]]
+            edge2 = new_edges[point_pair[1]]
 
             if intersection_between_points(((edge1[0]['x'], edge1[0]['y']), (edge1[1]['x'], edge1[1]['y'])),
                                            ((edge2[0]['x'], edge2[0]['y']), (edge2[1]['x'], edge2[1]['y']))):
@@ -387,20 +385,20 @@ def get_edges(g_box, distance_from_center_of_road = 0.0001):
     #             print(edge)
     #         else:
     #             print("Removed")
-    #
-    #
-    #
-    # for node_id, node in g_box.nodes.items():
-    #     if node['street_count'] != 1:
-    #          for u_line_keys in node_as_u[node_id]:
-    #              u_trench = road_node_to_trench_nodes[u_line_keys]
-    #              print(u_trench['trench'])
-    #              for v_line_keys in node_as_v[node_id]:
-    #                  v_trench = road_node_to_trench_nodes[v_line_keys]
-    #                  if not fix_intersecting_trenches(u_trench['trench'], v_trench['trench']):
-    #                      if u_trench['v'] != v_trench['u']:
-    #                          new_edges.append((v_trench['trench_v'], u_trench['trench_u'], 1, last_d[node_id]))
 
+    #
+    #
+    for node_id, node in g_box.nodes.items():
+        if node['street_count'] != 1:
+            for u_line_keys in node_as_u[node_id]:
+                u_trench = road_node_to_trench_nodes[u_line_keys]
+                for v_line_keys in node_as_v[node_id]:
+                    v_trench = road_node_to_trench_nodes[v_line_keys]
+                    if not fix_intersecting_trenches(u_trench['trench'], v_trench['trench']):
+                        if u_trench['v'] != v_trench['u']:
+                            line_key = "_".join([str(u_line_keys), str(v_line_keys)])
+                            #new_edges.append((v_trench['trench_v'], u_trench['trench_u'], 1, last_d[node_id]))
+                            new_edges[line_key] = (v_trench['trench_v'], u_trench['trench_u'], 1, last_d[node_id])
 
     return list(new_edges.values())
 
