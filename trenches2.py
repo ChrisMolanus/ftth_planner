@@ -40,6 +40,7 @@ class TrenchCorner(dict):
 
 
 def get_trench_corners(G_box):
+    nodes = dict()
     trench_corners = dict()
     road_crossing = dict()
     #node_id = 362555986
@@ -62,11 +63,12 @@ def get_trench_corners(G_box):
         last_node_id = None
         first_node_id = None
         for radian in sorted_vs:
-            neighbor = G_box.nodes[v]
             v = neighbors[radian]
             streets = G_box.get_edge_data(u, v)
             if len(streets) > 1:
                 print("Crap len(streets) > 1")
+            else:
+                print(streets[0])
             street = streets[0]
             street_id = str(street['osmid'])
             if last_radian is not None:
@@ -80,16 +82,22 @@ def get_trench_corners(G_box):
                     node['node_for_adding'] = node_id
                     trench_corners[street_id].add(node)
                     trench_corners[last_street].add(node)
+                    nodes[node.__hash__()] = node
+                else:
+                    node_id = nodes[node.__hash__()]['node_for_adding']
 
                 if last_node_id is not None:
                     road_crossing[last_street] = (last_node_id, node_id)
+                    if last_node_id == 400000011 or node_id == 400000011:
+                        print(f"In loop {last_node_id} {node_id}")
                 else:
                     first_node_id = node_id
                 last_node_id = node_id
             else:
                 first_radian = radian
                 first_street = street_id
-                trench_corners[street_id] = set()
+                if street_id not in trench_corners:
+                    trench_corners[street_id] = set()
             last_radian = radian
             last_v = v
             last_street = street_id
@@ -104,6 +112,8 @@ def get_trench_corners(G_box):
                 trench_corners[first_street].add(node)
                 trench_corners[last_street].add(node)
                 road_crossing[last_street] = (node_id, first_node_id)
+                if last_node_id == 400000011 or node_id == 400000011:
+                    print(f"Out of loop {first_node_id} {node_id}")
 
 
 
@@ -163,11 +173,12 @@ trench_corners, road_crossing = get_trench_corners(G_box)
 for osmid, corners in trench_corners.items():
     for corner in corners:
         G_box.add_node(**corner)
+        print(f"Corner {corner}")
 
 for u, current_none in G_box.nodes(data=True):
     print(f"{u} {current_none}")
 
-
+new_edges = list()
 for u, v, key, street in G_box.edges(keys=True, data=True):
     print(f"{u} {v} {key} {street}")
     street_id = str(street['osmid'])
@@ -177,13 +188,25 @@ for u, v, key, street in G_box.edges(keys=True, data=True):
             u_node = G_box.nodes[u]
             v_node = G_box.nodes[v]
             if not intersection_between_points((u_node, v_node), point_pair):
-                G_box.add_edge(u_for_edge=point_pair[0]['node_for_adding'],
-                               v_for_edge=point_pair[1]['node_for_adding'],
-                               key=1, osmid=8945376,
-                               oneway=False,
-                               name=f"trench {street_id}",
-                               length=225.493)
-                # TODO: Create trench line
+                new_edges.append({'u_for_edge': point_pair[0]['node_for_adding'],
+                                  'v_for_edge': point_pair[1]['node_for_adding'],
+                                  'key': 1, 'osmid': 8945376,
+                                  'oneway': False,
+                                  'name': f"trench {street_id}",
+                                  'length': 225.493})
+    else:
+        print(f"Street {street} not in trench_corners")
+
+for street_id, crossing in road_crossing. items():
+    new_edges.append({'u_for_edge': crossing[0],
+                      'v_for_edge': crossing[1],
+                      'key': 1, 'osmid': 8945376,
+                      'oneway': False,
+                      'name': f"trench {street_id}",
+                      'length': 225.493})
+
+for edge in new_edges:
+    G_box.add_edge(**edge)
 
 # TODO: Add corners as node
 # TODO: Add all trench lines as edges
