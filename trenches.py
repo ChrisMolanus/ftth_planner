@@ -12,12 +12,16 @@ import math
 from shapely.geometry import Point
 from shapely.geometry.linestring import LineString
 
+import shapely
+from shapely.geometry import LineString, Point
+
+
 distance_from_center_of_road = 5 #
 #roads_gdf = ox.geometries_from_place(place_name, tags={'highway': True})
 G_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, network_type='drive', simplify=True, retain_all=False)
 
 
-def get_intersection_point(line1, line2):
+def get_intersection_point2(line1, line2):
     xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
     ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
@@ -33,6 +37,32 @@ def get_intersection_point(line1, line2):
     d = (det(*line1), det(*line2))
     x = det(d, xdiff) / div
     y = det(d, ydiff) / div
+    return x, y
+
+
+def get_intersection_point(line1, line2):
+    # xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+    # ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+    #
+    # def det(a, b):
+    #     return a[0] * b[1] - a[1] * b[0]
+    #
+    # div = det(xdiff, ydiff)
+    # if div == 0:
+    #     raise Exception('lines do not intersect')
+    #     # print('lines do not intersect')
+    #     # return None, None
+    #
+    # d = (det(*line1), det(*line2))
+    # x = det(d, xdiff) / div
+    # y = det(d, ydiff) / div
+    # return x, y
+    line1 = LineString([line1[0], line1[1]])
+    line2 = LineString([line2[0], line2[1]])
+
+    int_pt = line1.intersection(line2)
+    x = int_pt.x
+    y = int_pt.y
     return x, y
 
 def get_nearest_road(G, point):
@@ -94,25 +124,31 @@ def isBetween(a, b, c):
 
 
 def intersection_between_points(line1, line2):
-    xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
-    ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+    # xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+    # ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+    #
+    # def det(a, b):
+    #     return a[0] * b[1] - a[1] * b[0]
+    #
+    # div = det(xdiff, ydiff)
+    # if div == 0:
+    #     # raise Exception('lines do not intersect')
+    #     print('lines do not intersect')
+    #     return False
+    #
+    # d = (det(*line1), det(*line2))
+    # x = det(d, xdiff) / div
+    # y = det(d, ydiff) / div
+    # if isBetween(line1[0], line1[1], (x, y)):
+    #     return True
+    # else:
+    #     return False
+    line1 = LineString([line1[0], line1[1]])
+    line2 = LineString([line2[0], line2[1]])
 
-    def det(a, b):
-        return a[0] * b[1] - a[1] * b[0]
+    int_pt = line1.intersection(line2)
+    return not int_pt.is_empty
 
-    div = det(xdiff, ydiff)
-    if div == 0:
-        # raise Exception('lines do not intersect')
-        print('lines do not intersect')
-        return False
-
-    d = (det(*line1), det(*line2))
-    x = det(d, xdiff) / div
-    y = det(d, ydiff) / div
-    if isBetween(line1[0], line1[1], (x, y)):
-        return True
-    else:
-        return False
 
 def get_trench_line(u, v, key, d, distance_from_center_of_road, osmid):
     """
@@ -141,7 +177,8 @@ def get_trench_line(u, v, key, d, distance_from_center_of_road, osmid):
 
                 if last_line is not None:
                     # Not first line
-                    x, y = get_intersection_point(last_line,
+
+                    x, y = get_intersection_point2(last_line,
                                                   [(new_u_node['x'], new_u_node['y']),
                                                    (new_v_node['x'], new_v_node['y'])])
                     x = round(x, 7)
