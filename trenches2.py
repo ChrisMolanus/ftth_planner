@@ -37,11 +37,12 @@ def point_on_circle(center, radius, radian):
 
 
 class TrenchCorner(dict):
-    def __init__(self, x, y, trench_count, *args, **kw):
+    def __init__(self, x, y, trench_count, u, *args, **kw):
         super(TrenchCorner, self).__init__(*args, **kw)
         self['x'] = x
         self['y'] = y
         self['trench_count'] = trench_count
+        self['u'] = u
         self['street_count'] = 1
 
     def __cmp__(self, other):
@@ -120,7 +121,7 @@ def get_trench_corners(G_box):
                 #print(f"between_radian:{between_radian}")
                 x, y = point_on_circle(current_node, distance_from_center_of_road, between_radian)
                 #print((x, y))
-                node = TrenchCorner(x, y, 2)
+                node = TrenchCorner(x, y, 2, u)
                 if street_id not in trench_corners:
                     trench_corners[street_id] = set()
                 if node not in trench_corners[first_street] and node not in trench_corners[last_street]:
@@ -155,7 +156,7 @@ def get_trench_corners(G_box):
             between_radian = first_radian - (abs(first_radian - last_radian) / 2)
             x, y = point_on_circle(current_node, distance_from_center_of_road, between_radian)
             #print((x, y))
-            node = TrenchCorner(x, y, 2)
+            node = TrenchCorner(x, y, 2, u)
             if node not in trench_corners[first_street] and node not in trench_corners[last_street]:
                 node_id += 1
                 node['node_for_adding'] = node_id
@@ -242,27 +243,26 @@ for u, v, key, street in G_box.edges(keys=True, data=True):
             if street_id in trench_corners:
                 corners = trench_corners[street_id]
                 for point_pair1 in list(itertools.combinations(corners, 2)):
-                    point_pair = [point_pair1[0], point_pair1[1]] # because tuples are immutable
-                    u_node = G_box.nodes[u]
-                    v_node = G_box.nodes[v]
-                    xs = [point_pair[0]['x'], point_pair[1]['x']]
-                    ys = [point_pair[0]['y'], point_pair[1]['y']]
-                    # xs.sort()
-                    # ys.sort()
-                    h1 = hash((xs[0], xs[1], ys[0], ys[1]))
-                    h2 = hash((xs[1], xs[0], ys[1], ys[0]))
-                    if not intersection_between_points((u_node, v_node), point_pair) \
-                            and h1 not in added_trenches\
-                            and h2 not in added_trenches:
-                        added_trenches.add(h1)
-                        added_trenches.add(h2)
-                        if point_pair[0]["node_for_adding"] not in point_edges:
-                            point_edges[point_pair[0]["node_for_adding"]] = list()
-                        point_edges[point_pair[0]["node_for_adding"]].append(point_pair)
-                        if point_pair[1]["node_for_adding"] not in point_edges:
-                            point_edges[point_pair[1]["node_for_adding"]] = list()
-                        point_edges[point_pair[1]["node_for_adding"]].append(point_pair)
-                        new_pp.append(point_pair)
+                    if point_pair1[0]['u'] != point_pair1[1]['u']:
+                        point_pair = [point_pair1[0], point_pair1[1]] # because tuples are immutable
+                        u_node = G_box.nodes[u]
+                        v_node = G_box.nodes[v]
+                        xs = [point_pair[0]['x'], point_pair[1]['x']]
+                        ys = [point_pair[0]['y'], point_pair[1]['y']]
+                        h1 = hash((xs[0], xs[1], ys[0], ys[1]))
+                        h2 = hash((xs[1], xs[0], ys[1], ys[0]))
+                        if not intersection_between_points((u_node, v_node), point_pair) \
+                                and h1 not in added_trenches\
+                                and h2 not in added_trenches:
+                            added_trenches.add(h1)
+                            added_trenches.add(h2)
+                            if point_pair[0]["node_for_adding"] not in point_edges:
+                                point_edges[point_pair[0]["node_for_adding"]] = list()
+                            point_edges[point_pair[0]["node_for_adding"]].append(point_pair)
+                            if point_pair[1]["node_for_adding"] not in point_edges:
+                                point_edges[point_pair[1]["node_for_adding"]] = list()
+                            point_edges[point_pair[1]["node_for_adding"]].append(point_pair)
+                            new_pp.append(point_pair)
 
 for node_id, point_pairs in point_edges.items():
     if len(point_pairs) > 1:
