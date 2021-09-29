@@ -18,8 +18,8 @@ from shapely.geometry import LineString, Point
 
 distance_from_center_of_road = 5 #
 #roads_gdf = ox.geometries_from_place(place_name, tags={'highway': True})
-G_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, network_type='drive', simplify=True, retain_all=False)
-
+G_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, network_type='drive', simplify=False, retain_all=True)
+#G_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48386, 4.49521, network_type='drive', simplify=True, retain_all=False)
 
 def get_intersection_point2(line1, line2):
     xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
@@ -307,32 +307,32 @@ def get_edges(g_box, distance_from_center_of_road = 0.0001):
 
         new_u_node, new_v_node, new_key, new_d = get_trench_line(g_box.nodes[u], g_box.nodes[v], key, d,
                                                                  distance_from_center_of_road, osmid)
-        for w in G_box.neighbors(u):
-            neighbor = G_box.nodes[w]
-            if intersection_between_points(((g_box.nodes[u]['x'], g_box.nodes[u]['y']), (neighbor['x'], neighbor['y']))
-                    , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y']))):
-                x, y = get_intersection_point(((g_box.nodes[u]['x'], g_box.nodes[u]['y']), (neighbor['x'], neighbor['y']))
-                    , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y'])))
-                if point_distance(new_v_node, (x, y)) < point_distance(new_u_node, (x, y)):
-                    new_v_node['x'] = x
-                    new_v_node['y'] = y
-                else:
-                    new_u_node['x'] = x
-                    new_u_node['y'] = y
-
-        for w in G_box.neighbors(v):
-            neighbor = G_box.nodes[w]
-            if intersection_between_points(((g_box.nodes[v]['x'], g_box.nodes[v]['y']), (neighbor['x'],neighbor['y']))
-                    , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y']))):
-                x, y = get_intersection_point(((g_box.nodes[v]['x'], g_box.nodes[v]['y']), (neighbor['x'],neighbor['y']))
-                    , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y'])))
-                if point_distance(new_v_node, (x, y)) < point_distance(new_u_node, (x, y)):
-                    new_v_node['x'] = x
-                    new_v_node['y'] = y
-
-                else:
-                    new_u_node['x'] = x
-                    new_u_node['y'] = y
+        # for w in G_box.neighbors(u):
+        #     neighbor = G_box.nodes[w]
+        #     if intersection_between_points(((g_box.nodes[u]['x'], g_box.nodes[u]['y']), (neighbor['x'], neighbor['y']))
+        #             , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y']))):
+        #         x, y = get_intersection_point(((g_box.nodes[u]['x'], g_box.nodes[u]['y']), (neighbor['x'], neighbor['y']))
+        #             , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y'])))
+        #         if point_distance(new_v_node, (x, y)) < point_distance(new_u_node, (x, y)):
+        #             new_v_node['x'] = x
+        #             new_v_node['y'] = y
+        #         else:
+        #             new_u_node['x'] = x
+        #             new_u_node['y'] = y
+        #
+        # for w in G_box.neighbors(v):
+        #     neighbor = G_box.nodes[w]
+        #     if intersection_between_points(((g_box.nodes[v]['x'], g_box.nodes[v]['y']), (neighbor['x'],neighbor['y']))
+        #             , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y']))):
+        #         x, y = get_intersection_point(((g_box.nodes[v]['x'], g_box.nodes[v]['y']), (neighbor['x'],neighbor['y']))
+        #             , ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y'])))
+        #         if point_distance(new_v_node, (x, y)) < point_distance(new_u_node, (x, y)):
+        #             new_v_node['x'] = x
+        #             new_v_node['y'] = y
+        #
+        #         else:
+        #             new_u_node['x'] = x
+        #             new_u_node['y'] = y
 
 
 
@@ -357,30 +357,28 @@ def get_edges(g_box, distance_from_center_of_road = 0.0001):
         last_d[u] = d1
         last_d[v] = d1
         osmid += 1
-        for point_pair in list(itertools.combinations(new_edges.keys(), 2)):
-            edge1 = new_edges[point_pair[0]]
-            edge2 = new_edges[point_pair[1]]
+    for point_pair in list(itertools.combinations(new_edges.keys(), 2)):
+        edge1 = new_edges[point_pair[0]]
+        edge2 = new_edges[point_pair[1]]
 
-            if intersection_between_points(((edge1[0]['x'], edge1[0]['y']), (edge1[1]['x'], edge1[1]['y'])),
-                                           ((edge2[0]['x'], edge2[0]['y']), (edge2[1]['x'], edge2[1]['y']))):
-                x, y = get_intersection_point(((edge1[0]['x'], edge1[0]['y']), (edge1[1]['x'], edge1[1]['y'])),
-                                              ((edge2[0]['x'], edge2[0]['y']), (edge2[1]['x'], edge2[1]['y'])))
-                # if point_distance(edge1[0], (x, y)) < point_distance(edge1[1], (x, y)):
-                #     edge1[0]['x'] = x
-                #     edge1[0]['y'] = y
-                # else:
-                #     edge1[1]['x'] = x
-                #     edge1[1]['y'] = y
-                # if point_distance(edge2[0], (x, y)) < point_distance(edge2[1], (x, y)):
-                #     edge2[0]['x'] = x
-                #     edge2[0]['y'] = y
-                # else:
-                #     edge2[1]['x'] = x
-                #     edge2[1]['y'] = y
-                #new_edges[key1] = edge1
-                #new_edges[key2] = edge2
+        if intersection_between_points(((edge1[0]['x'], edge1[0]['y']), (edge1[1]['x'], edge1[1]['y'])),
+                                       ((edge2[0]['x'], edge2[0]['y']), (edge2[1]['x'], edge2[1]['y']))):
+            x, y = get_intersection_point(((edge1[0]['x'], edge1[0]['y']), (edge1[1]['x'], edge1[1]['y'])),
+                                          ((edge2[0]['x'], edge2[0]['y']), (edge2[1]['x'], edge2[1]['y'])))
+            if point_distance(edge1[0], (x, y)) < point_distance(edge1[1], (x, y)):
+                edge1[0]['x'] = x
+                edge1[0]['y'] = y
             else:
-                pass
+                edge1[1]['x'] = x
+                edge1[1]['y'] = y
+            if point_distance(edge2[0], (x, y)) < point_distance(edge2[1], (x, y)):
+                edge2[0]['x'] = x
+                edge2[0]['y'] = y
+            else:
+                edge2[1]['x'] = x
+                edge2[1]['y'] = y
+            new_edges[point_pair[0]] = edge1
+            new_edges[point_pair[1]] = edge2
 
 
         #print(get_nearest_road(G_box, new_u_node))
@@ -422,25 +420,26 @@ def get_edges(g_box, distance_from_center_of_road = 0.0001):
     #             print(edge)
     #         else:
     #             print("Removed")
-
     #
     #
-    for node_id, node in g_box.nodes.items():
-        if node['street_count'] != 1:
-            for u_line_keys in node_as_u[node_id]:
-                u_trench = road_node_to_trench_nodes[u_line_keys]
-                for v_line_keys in node_as_v[node_id]:
-                    v_trench = road_node_to_trench_nodes[v_line_keys]
-                    if not fix_intersecting_trenches(u_trench['trench'], v_trench['trench']):
-                        if u_trench['v'] != v_trench['u']:
-                            line_key = "_".join([str(u_line_keys), str(v_line_keys)])
-                            #new_edges.append((v_trench['trench_v'], u_trench['trench_u'], 1, last_d[node_id]))
-                            new_edges[line_key] = (v_trench['trench_v'], u_trench['trench_u'], 1, last_d[node_id])
+    #
+    # for node_id, node in g_box.nodes.items():
+    #     if node['street_count'] != 1:
+    #         for u_line_keys in node_as_u[node_id]:
+    #             u_trench = road_node_to_trench_nodes[u_line_keys]
+    #             for v_line_keys in node_as_v[node_id]:
+    #                 v_trench = road_node_to_trench_nodes[v_line_keys]
+    #                 if not fix_intersecting_trenches(u_trench['trench'], v_trench['trench']):
+    #                     if u_trench['v'] != v_trench['u']:
+    #                         line_key = "_".join([str(u_line_keys), str(v_line_keys)])
+    #                         #new_edges.append((v_trench['trench_v'], u_trench['trench_u'], 1, last_d[node_id]))
+    #                         new_edges[line_key] = (v_trench['trench_v'], u_trench['trench_u'], 1, last_d[node_id])
 
     return list(new_edges.values())
 
 
 G_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, network_type='drive', simplify=True, retain_all=False)
+#G_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48386, 4.49521, network_type='drive', simplify=True, retain_all=False)
 
 new_edges = get_edges(G_box)
 
