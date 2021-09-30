@@ -9,7 +9,7 @@ import math
 distance_from_center_of_road = 0.0001
 
 
-def point_distance_from_line(line: Tuple[dict], point: dict) -> float:
+def point_distance_from_line(line: Tuple[dict, dict], point: dict) -> float:
     """
     The distance between a point and a line
     :param line: The line
@@ -30,7 +30,7 @@ def node_distance(node1: dict, node2: dict) -> float:
     return (((node2['x'] - node1['x']) ** 2) + ((node2['y'] - node1['y']) ** 2)) ** 0.5
 
 
-def angle(vector1: Tuple[float], vector2: Tuple[float]) -> float:
+def angle(vector1: Tuple[float, float], vector2: Tuple[float, float]) -> float:
     """
     Returns the clockwise angle between two vectors in radian
     :param vector1: A vector
@@ -62,7 +62,7 @@ def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, 
 
 
 class TrenchCorner(dict):
-    def __init__(self, x: float, y: float, trench_count: int, u_node_id:int, street_ids: Set, *args, **kw):
+    def __init__(self, x: float, y: float, trench_count: int, u_node_id: int, street_ids: Set, *args, **kw):
         """
         A FttH planner trench corner
         :param x: The OSMnx x coordinate of the node
@@ -108,7 +108,7 @@ def get_trench_corners(network):
             street = network.get_edge_data(u, v)[0]
             if 'geometry' not in street:
                 # Its' a simple straight line so that the other intersection as point ot form the vector
-                radian = angle((1, 0), (neighbor['x']-current_node['x'], neighbor['y']-current_node['y']))
+                radian = angle((1.0, 0.0), (neighbor['x']-current_node['x'], neighbor['y']-current_node['y']))
             else:
                 # Street is not a simple line so we have to look at the geometry
                 l: List[Tuple[float, float]] = list(street['geometry'].coords)
@@ -122,7 +122,7 @@ def get_trench_corners(network):
                     v1 = l[-2]
 
                 # Find the angel between a horizontal line ( (1,0) ) the road vector (in radian, not degrees)
-                radian = angle((1, 0), (v1[0] - current_node['x'], v1[1] - current_node['y']))
+                radian = angle((1.0, 0.0), (v1[0] - current_node['x'], v1[1] - current_node['y']))
             neighbors[radian] = v
 
         # Sort the angles since if ther are more that 3 we want to only put corners between adjacent vectors
@@ -135,7 +135,7 @@ def get_trench_corners(network):
         last_street_id = None
         last_node_id = None
         first_node_id = None
-        street_segment_id: str = None
+        street_segment_id: str = ""
         # Loop though the street vectors in a clockwise order (sorted_vs.sort())
         for radian in sorted_vs:
             v = neighbors[radian]
@@ -231,7 +231,7 @@ def get_trench_corners(network):
     return output_trench_corners, output_road_crossing
 
 
-def is_between(a: Tuple[float], b: Tuple[float], c: Tuple[float]) -> bool:
+def is_between(a: Tuple[float, float], b: Tuple[float, float], c: Tuple[float, float]) -> bool:
     """
     Is point c between points a and b
     :param a: A point
@@ -256,7 +256,7 @@ def is_between(a: Tuple[float], b: Tuple[float], c: Tuple[float]) -> bool:
     return True
 
 
-def intersection_between_points(l1: Tuple[dict], l2: Tuple[dict]) -> bool:
+def intersection_between_points(l1: List[dict, dict], l2: List[dict, dict]) -> bool:
     """
     Returns True if two line intersect at a point on both lines
     :param l1: A line
@@ -354,7 +354,7 @@ for u, v, key, street in G_box.edges(keys=True, data=True):
                         xs.sort()
                         ys.sort()
                         trench_candidate_hash = hash((xs[0], xs[1], ys[0], ys[1]))
-                        if not intersection_between_points((u_node, v_node), trench_candidate) \
+                        if not intersection_between_points([u_node, v_node], trench_candidate) \
                                 and trench_candidate_hash not in added_trenches:
                             added_trenches.add(trench_candidate_hash)
 
@@ -428,7 +428,10 @@ for _, building in building_gdf.iterrows():
     building_centroids.append([centroid.xy[0][0], centroid.xy[1][0]])
 
 # Give different things different colours
-ec = ['y' if 'highway' in d else 'gray' if 'trench_crossing' in d else 'r' for _, _, _, d in G_box.edges(keys=True, data=True)]
+ec = ['y' if 'highway' in d else
+      'gray' if 'trench_crossing' in d
+      else 'r'
+      for _, _, _, d in G_box.edges(keys=True, data=True)]
 
 # Plot the network
 fig, ax = ox.plot_graph(G_box, bgcolor='white', edge_color=ec,
