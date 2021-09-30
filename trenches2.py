@@ -256,7 +256,7 @@ def is_between(a: Tuple[float, float], b: Tuple[float, float], c: Tuple[float, f
     return True
 
 
-def intersection_between_points(l1: List[dict, dict], l2: List[dict, dict]) -> bool:
+def intersection_between_points(l1: List[dict], l2: List[dict]) -> bool:
     """
     Returns True if two line intersect at a point on both lines
     :param l1: A line
@@ -308,7 +308,7 @@ point_edges = dict()
 processed_streets = set()
 for u, v, key, street in G_box.edges(keys=True, data=True):
     added_trenches = set()
-    print(f"{u} {v} {key} {street}")
+
     u_node = G_box.nodes[u]
     v_node = G_box.nodes[v]
     s = [u, v]
@@ -335,7 +335,7 @@ for u, v, key, street in G_box.edges(keys=True, data=True):
                     street_sides[1].append(corner)
                 else:
                     street_sides[0].append(corner)
-            print(f"Left {len(street_sides[0])}, Right {len(street_sides[1])}")
+
             for side_id in range(0, len(street_sides)):
                 side_corners = street_sides[side_id]
                 # Create possible trench corner pairs but looking for all possible combinations of corner points
@@ -368,8 +368,7 @@ for u, v, key, street in G_box.edges(keys=True, data=True):
                             point_edges[street_segment_id][trench_candidate_hash][side_id].append(trench_candidate)
 
                             new_pp.append(trench_candidate)
-                    else:
-                        print("Same Corner")
+
     else:
         # A curved road
         pass
