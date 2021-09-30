@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Set
 
 import osmnx as ox
 import itertools
@@ -9,16 +9,34 @@ import math
 distance_from_center_of_road = 0.0001
 
 
-def point_distance_from_line(line, point):
+def point_distance_from_line(line: Tuple[dict], point: dict) -> float:
+    """
+    The distance between a point and a line
+    :param line: The line
+    :param point: The point
+    :return: The distance between the point and the line
+    """
     return (((point['x'] - line[0]['x'])*(line[1]['y']-line[0]['y']))
             - ((point['y'] - line[0]['y']) * (line[1]['x'] - line[0]['x'])))
 
 
-def node_distance(node1, node2):
+def node_distance(node1: dict, node2: dict) -> float:
+    """
+    The distance between two points
+    :param node1: A point
+    :param node2: A point
+    :return: The distance between the two points
+    """
     return (((node2['x'] - node1['x']) ** 2) + ((node2['y'] - node1['y']) ** 2)) ** 0.5
 
 
-def angle(vector1, vector2):
+def angle(vector1: Tuple[float], vector2: Tuple[float]) -> float:
+    """
+    Returns the clockwise angle between two vectors in radian
+    :param vector1: A vector
+    :param vector2: A vector
+    :return: The angle between the two vectors
+    """
     x1, y1 = vector1
     x2, y2 = vector2
     inner_product = x1*x2 + y1*y2
@@ -30,14 +48,31 @@ def angle(vector1, vector2):
         return math.acos(inner_product/(len1*len2))
 
 
-def point_on_circle(center, radius, radian):
+def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, float]:
+    """
+    Returns a point on a circle with the center "center" and a radius "radius" at the angle "radian"
+    :param center: The center of the circle
+    :param radius: The radius of the circle
+    :param radian: The angle of the point need relative to (0,0)(1,0) in radian not degrees
+    :return: a point on a circle
+    """
     x = center['x'] + (radius * math.cos(radian))
     y = center['y'] + (radius * math.sin(radian))
     return x, y
 
 
 class TrenchCorner(dict):
-    def __init__(self, x, y, trench_count, u_node_id, street_ids, *args, **kw):
+    def __init__(self, x: float, y: float, trench_count: int, u_node_id:int, street_ids: Set, *args, **kw):
+        """
+        A FttH planner trench corner
+        :param x: The OSMnx x coordinate of the node
+        :param y: The OSMnx y coordinate of the node
+        :param trench_count:
+        :param u_node_id: The OSMnx node ID of the intersection this corner is on
+        :param street_ids: A SET of the string- representation of the sorted list of node IDs
+        :param args: Dict args
+        :param kw: Dict kw
+        """
         super(TrenchCorner, self).__init__(*args, **kw)
         self['x'] = x
         self['y'] = y
@@ -196,7 +231,14 @@ def get_trench_corners(network):
     return output_trench_corners, output_road_crossing
 
 
-def is_between(a, b, c):
+def is_between(a: Tuple[float], b: Tuple[float], c: Tuple[float]) -> bool:
+    """
+    Is point c between points a and b
+    :param a: A point
+    :param b: A point
+    :param c: The point that might be between "a" and "b"
+    :return: True is "c" is between "a" and "b" (or close enough for floating point precision)
+    """
     crossproduct = (c[1] - a[1]) * (b[0] - a[0]) - (c[0] - a[0]) * (b[1] - a[1])
 
     # # compare versus epsilon for floating point values, or != 0 if using integers
@@ -214,7 +256,13 @@ def is_between(a, b, c):
     return True
 
 
-def intersection_between_points(l1, l2):
+def intersection_between_points(l1: Tuple[dict], l2: Tuple[dict]) -> bool:
+    """
+    Returns True if two line intersect at a point on both lines
+    :param l1: A line
+    :param l2: A line
+    :return: True if two line intersect at a point on both lines
+    """
     line1 = (l1[0]['x'], l1[0]['y']), (l1[1]['x'], l1[1]['y'])
     line2 = (l2[0]['x'], l2[0]['y']), (l2[1]['x'], l2[1]['y'])
 
