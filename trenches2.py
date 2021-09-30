@@ -304,6 +304,7 @@ for u, v, key, street in G_box.edges(keys=True, data=True):
 
 # If there are more than one possibility to have a trench on one side of the street segment,
 # Find the shortest one and make the others as invalid i.e. (None, None)
+# TODO: split by side of road and find shortest on ether side separately
 for node_id, point_pairs in point_edges.items():
     if len(point_pairs) > 1:
         shortest_pair = None
