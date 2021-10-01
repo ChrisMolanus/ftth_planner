@@ -456,6 +456,8 @@ for new_u_node, new_v_node, new_key, new_d in new_edges:
     G_box.add_edge(u, v, key=new_key, **new_d)
 
 
+
+
 # Get buildings
 building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721,  tags={'building': True})
 
