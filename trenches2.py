@@ -6,6 +6,8 @@ import itertools
 import matplotlib.pyplot as plt
 import math
 
+from shapely.geometry import Point, LineString
+
 distance_from_center_of_road = 0.0001
 
 
@@ -16,7 +18,7 @@ def point_distance_from_line(line: Tuple[dict, dict], point: dict) -> float:
     :param point: The point
     :return: The distance between the point and the line
     """
-    return (((point['x'] - line[0]['x'])*(line[1]['y']-line[0]['y']))
+    return (((point['x'] - line[0]['x']) * (line[1]['y'] - line[0]['y']))
             - ((point['y'] - line[0]['y']) * (line[1]['x'] - line[0]['x'])))
 
 
@@ -39,13 +41,13 @@ def angle(vector1: Tuple[float, float], vector2: Tuple[float, float]) -> float:
     """
     x1, y1 = vector1
     x2, y2 = vector2
-    inner_product = x1*x2 + y1*y2
+    inner_product = x1 * x2 + y1 * y2
     len1 = math.hypot(x1, y1)
     len2 = math.hypot(x2, y2)
     if y2 < y1:
-        return math.pi - math.acos(inner_product/(len1*len2)) + math.pi
+        return math.pi - math.acos(inner_product / (len1 * len2)) + math.pi
     else:
-        return math.acos(inner_product/(len1*len2))
+        return math.acos(inner_product / (len1 * len2))
 
 
 def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, float]:
@@ -108,7 +110,7 @@ def get_trench_corners(network):
             street = network.get_edge_data(u, v)[0]
             if 'geometry' not in street:
                 # Its' a simple straight line so that the other intersection as point ot form the vector
-                radian = angle((1.0, 0.0), (neighbor['x']-current_node['x'], neighbor['y']-current_node['y']))
+                radian = angle((1.0, 0.0), (neighbor['x'] - current_node['x'], neighbor['y'] - current_node['y']))
             else:
                 # Street is not a simple line so we have to look at the geometry
                 l: List[Tuple[float, float]] = list(street['geometry'].coords)
@@ -245,15 +247,57 @@ def is_between(a: Tuple[float, float], b: Tuple[float, float], c: Tuple[float, f
     if abs(crossproduct) > 0.00000005:
         return False
 
-    dotproduct = (c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1])*(b[1] - a[1])
+    dotproduct = (c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1]) * (b[1] - a[1])
     if dotproduct < 0:
         return False
 
-    squaredlengthba = (b[0] - a[0])*(b[0] - a[0]) + (b[1] - a[1])*(b[1] - a[1])
+    squaredlengthba = (b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1])
     if dotproduct > squaredlengthba:
         return False
 
     return True
+
+
+def get_nearest_edge(G, point):
+    """
+    Return the nearest edge to a pair of coordinates. Pass in a graph and a tuple
+    with the coordinates. We first get all the edges in the graph. Secondly we compute
+    the euclidean distance from the coordinates to the segments determined by each edge.
+    The last step is to sort the edge segments in ascending order based on the distance
+    from the coordinates to the edge. In the end, the first element in the list of edges
+    will be the closest edge that we will return as a tuple containing the shapely
+    geometry and the u, v nodes.
+    Parameters
+    ----------
+    G : networkx multidigraph
+    point : tuple
+        The (lat, lng) or (y, x) point for which we will find the nearest edge
+        in the graph
+    Returns
+    -------
+    closest_edge_to_point : tuple (shapely.geometry, u, v)
+        A geometry object representing the segment and the coordinates of the two
+        nodes that determine the edge section, u and v, the OSM ids of the nodes.
+    """
+    gdf = ox.graph_to_gdfs(G, nodes=False, fill_edge_geometry=True)
+    graph_edges = gdf[["geometry", "u", "v"]].values.tolist()
+
+    edges_with_distances = [
+        (
+            graph_edge,
+            Point(tuple(reversed(point))).distance(graph_edge[0])
+        )
+        for graph_edge in graph_edges
+    ]
+
+    edges_with_distances = sorted(edges_with_distances, key=lambda x: x[1])
+    closest_edge_to_point = edges_with_distances[0][0]
+
+    geometry, u, v = closest_edge_to_point
+
+    # log('Found nearest edge ({}) to point {} in {:,.2f} seconds'.format((u, v), point, time.time() - start_time))
+
+    return u, v
 
 
 def intersection_between_points(l1: List[dict], l2: List[dict]) -> bool:
@@ -405,7 +449,7 @@ for trench_candidate in new_pp:
                        length=225.493)
 
 # Add the crossings, trenches connecting corners around an intersection
-for street_segment_id, crossings in road_crossing. items():
+for street_segment_id, crossings in road_crossing.items():
     for crossing in crossings:
         G_box.add_edge(u_for_edge=crossing[0],
                        v_for_edge=crossing[1],
@@ -415,16 +459,51 @@ for street_segment_id, crossings in road_crossing. items():
                        length=225.493,
                        trench_crossing=True)
 
-
 # Get buildings
-building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721,  tags={'building': True})
+building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tags={'building': True})
 
 # Get Building centroids
 # TODO: Add trenches from building centroid to nearest trench
 building_centroids = list()
+node_id = G_box.number_of_nodes()
 for _, building in building_gdf.iterrows():
     centroid = building['geometry'].centroid
     building_centroids.append([centroid.xy[0][0], centroid.xy[1][0]])
+    edge = ox.distance.nearest_edges(G_box, centroid.xy[0][0], centroid.xy[1][0])
+    print(edge)
+    node_id += 1
+    u = node_id
+    node_id += 1
+    v = node_id
+    print(v)
+    new_u_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
+
+    pt_nearest_edge = edge = ox.distance.nearest_edges(G_box, centroid.xy[0][0], centroid.xy[1][0])  # [1], [2] are start/end nodes of the nearest edge
+
+    # project points onto neareset edge (a,b)
+    o_point = Point(centroid.xy[0][0], centroid.xy[1][0])
+    a_point = Point(G_box.nodes[pt_nearest_edge[0]]['x'], G_box.nodes[pt_nearest_edge[0]]['y'])
+    b_point = Point(G_box.nodes[pt_nearest_edge[1]]['x'], G_box.nodes[pt_nearest_edge[1]]['y'])
+    a_latl = (G_box.nodes[pt_nearest_edge[0]]['y'], G_box.nodes[pt_nearest_edge[0]]['x'])
+    b_latl = (G_box.nodes[pt_nearest_edge[1]]['y'], G_box.nodes[pt_nearest_edge[1]]['x'])
+    dist_ab = LineString([a_point, b_point]).project(o_point)
+    projected_orig_point = list(LineString([a_point, b_point]).interpolate(dist_ab).coords)
+    o1_latl = (projected_orig_point[0][1], projected_orig_point[0][0])
+
+    print(o1_latl)
+
+    new_v_node = {'x': o1_latl[0], 'y': o1_latl[1]}
+
+    G_box.add_node(u, **new_u_node)
+    G_box.add_node(v, **new_v_node)
+
+    G_box.add_edge(u_for_edge=u,
+                   v_for_edge=v,
+                   key=1, osmid=8945376,
+                   oneway=False,
+                   name=f"trench {u}",
+                   length=225.493)
+
 
 # Give different things different colours
 ec = ['y' if 'highway' in d else
