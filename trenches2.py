@@ -283,8 +283,7 @@ def get_trench_corners(network):
             s.sort()
             radian_street_segment_id = str(s)
             if len(streets) > 1:
-                # This can happen if the GBox hacked the street into multiple segments, I think
-                print("Crap len(streets) > 1")
+                print("Warning len(streets) > 1, This can happen if the GBox hacked the street into multiple segments")
                 print(streets)
 
             # We need two vectors to find a trench corner between them
