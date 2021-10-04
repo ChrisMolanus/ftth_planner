@@ -197,12 +197,13 @@ def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: Li
             else:
                 # Fist line
                 # Find Trench corner that is closest to this point
+                # TODO: check if corner is closer to new_v_node
                 u_trench_shortest_distance = 10000000
-                for u_corner in u_side_corners:
-                    current_distance = node_distance(u_corner, new_u_node)
+                for v_corner in u_side_corners:
+                    current_distance = node_distance(v_corner, new_u_node)
                     if current_distance < u_trench_shortest_distance:
                         u_trench_shortest_distance = current_distance
-                        closest_u_for_trench = u_corner
+                        closest_u_for_trench = v_corner
                 new_u_node = closest_u_for_trench
                 x = new_u_node['x']
                 y = new_u_node['y']
@@ -222,11 +223,12 @@ def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: Li
 
     closest_v_for_trench = None
     u_trench_shortest_distance = 10000000
-    for u_corner in v_side_corners:
-        current_distance = node_distance(u_corner, {'x': last_trench_point[0], 'y': last_trench_point[0]})
+    # TODO: check if corner is closer to point before last_trench_point
+    for v_corner in v_side_corners:
+        current_distance = node_distance(v_corner, {'x': last_trench_point[0], 'y': last_trench_point[0]})
         if current_distance < u_trench_shortest_distance:
             u_trench_shortest_distance = current_distance
-            closest_v_for_trench = u_corner
+            closest_v_for_trench = v_corner
     linestring.append((closest_v_for_trench['x'], closest_v_for_trench['y']))
 
     return {'u_for_edge': closest_u_for_trench,
@@ -587,13 +589,15 @@ for trench_candidate in new_pp:
         G_box.add_edge(u_for_edge=trench_candidate[0]['node_for_adding'],
                        v_for_edge=trench_candidate[1]['node_for_adding'],
                        key=1, osmid=8945376,
-                       oneway=False,
+                       trench=True,
                        name=f"trench {trench_candidate[0]['street_ids']}",
                        length=225.493)
 
+# Add the curved trenches to the network
 for curved_trench in new_curved_pp:
     G_box.add_edge(**curved_trench,
                    key=1, osmid=8945376,
+                   trench=True,
                    oneway=False)
 
 # Add the crossings, trenches connecting corners around an intersection
@@ -605,6 +609,7 @@ for street_segment_id, crossings in road_crossing. items():
                        oneway=False,
                        name=f"trench {street_segment_id}",
                        length=225.493,
+                       trench=True,
                        trench_crossing=True)
 
 
@@ -619,9 +624,10 @@ for _, building in building_gdf.iterrows():
     building_centroids.append([centroid.xy[0][0], centroid.xy[1][0]])
 
 # Give different things different colours
-ec = ['y' if 'highway' in d else
-      'gray' if 'trench_crossing' in d
-      else 'r'
+ec = ['yellow' if 'highway' in d else
+      'gray' if 'trench_crossing' in d else
+      'blue' if 'trench' in d
+      else 'red'
       for _, _, _, d in G_box.edges(keys=True, data=True)]
 
 # Plot the network
