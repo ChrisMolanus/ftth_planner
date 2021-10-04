@@ -136,7 +136,14 @@ def get_parallel_line_points(u_node: dict, v_node: dict, vector_distance: float,
     return new_u_node, new_v_node
 
 
-def get_intersection_point(line1, line2):
+def get_intersection_point(line1: Tuple[Tuple[float, float], Tuple[float, float]],
+                           line2: Tuple[Tuple[float, float], Tuple[float, float]]) -> Tuple[float, float]:
+    """
+    Returns the point where the two lines intersect
+    :param line1: Fist line
+    :param line2: Second line
+    :return: The point where the two lines intersect
+    """
     xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
     ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
