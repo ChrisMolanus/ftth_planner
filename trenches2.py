@@ -1,5 +1,6 @@
 from typing import Dict, List, Tuple, Set
 
+import numpy as np
 import osmnx as ox
 import itertools
 
@@ -61,6 +62,20 @@ def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, 
     x = center['x'] + (radius * math.cos(radian))
     y = center['y'] + (radius * math.sin(radian))
     return x, y
+
+def point_on_line(u, v, c, return_distance=False):
+    a = np.array([u['x'], u['y']])
+    b = np.array([v['x'], v['y']])
+    p = np.array([c['x'], c['y']])
+    ap = p - a
+    ab = b - a
+    result = a + np.dot(ap, ab) / np.dot(ab, ab) * ab
+    dist = np.sum((p - result) ** 2)
+    if return_distance:
+        return result, dist
+    else:
+        return result
+
 
 
 class TrenchCorner(dict):
@@ -389,7 +404,7 @@ for u, v, key, street in G_box.edges(keys=True, data=True):
                     if point_pair1[0]['u'] != point_pair1[1]['u']:
                         # trench_candidate as to be a list because tuples are immutable,
                         # and we might invalidate it later whe we chose from the candidates
-                        trench_candidate = [point_pair1[0], point_pair1[1]]
+                        trench_candidate = [point_pair1[0], point_pair1[1], street['name']]
 
                         # There is no need to have multiple trenches between the same two points
                         # So only process a pair ones
@@ -428,7 +443,7 @@ for street_segment_id, streets in point_edges.items():
                 shortest_distance = 1000000
                 for trench_candidate in side:
                     if trench_candidate[0] is not None:
-                        new_dist = node_distance(*trench_candidate)
+                        new_dist = node_distance(trench_candidate[0], trench_candidate[1])
                         if new_dist < shortest_distance:
                             if shortest_pair is not None:
                                 # Mark trench to not be used
@@ -445,7 +460,7 @@ for trench_candidate in new_pp:
                        v_for_edge=trench_candidate[1]['node_for_adding'],
                        key=1, osmid=8945376,
                        oneway=False,
-                       name=f"trench {street_segment_id}",
+                       name=f"trench {trench_candidate[2]}",
                        length=225.493)
 
 # Add the crossings, trenches connecting corners around an intersection
@@ -467,42 +482,70 @@ building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tag
 building_centroids = list()
 node_id = G_box.number_of_nodes()
 for _, building in building_gdf.iterrows():
+    street_name = building['addr:street']
     centroid = building['geometry'].centroid
     building_centroids.append([centroid.xy[0][0], centroid.xy[1][0]])
-    edge = ox.distance.nearest_edges(G_box, centroid.xy[0][0], centroid.xy[1][0])
-    print(edge)
     node_id += 1
-    u = node_id
+    u_id = node_id
     node_id += 1
-    v = node_id
-    print(v)
-    new_u_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
+    v_id = node_id
+    tmp = False
+    distance = float('inf')
+    for u, v, key, street in G_box.edges(keys=True, data=True):
+        if str(street_name) in street['name']:
+            u_node = G_box.nodes[u]
+            v_node = G_box.nodes[v]
+            #a_point = Point(u_node['x'], u_node['y'])
+            #b_point = Point(v_node['x'], v_node['y'])
+            new_u_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
+            print(street_name)
+            projected, new_distance = point_on_line(u_node, v_node, new_u_node, return_distance=True)
+            if new_distance < distance:
+                new_v_node = {'x': projected[0], 'y': projected[1]}
+                distance = new_distance
+                tmp = True
+    if tmp:
+        G_box.add_node(v_id, **new_v_node)
+        G_box.add_node(u_id, **new_u_node)
+        G_box.add_edge(u_for_edge=u_id,
+                       v_for_edge=v_id,
+                       key=1, osmid=8945376,
+                       oneway=False,
+                       name=f"trench {u}",
+                       length=225.493)
 
-    pt_nearest_edge = edge = ox.distance.nearest_edges(G_box, centroid.xy[0][0], centroid.xy[1][0])  # [1], [2] are start/end nodes of the nearest edge
-
-    # project points onto neareset edge (a,b)
-    o_point = Point(centroid.xy[0][0], centroid.xy[1][0])
-    a_point = Point(G_box.nodes[pt_nearest_edge[0]]['x'], G_box.nodes[pt_nearest_edge[0]]['y'])
-    b_point = Point(G_box.nodes[pt_nearest_edge[1]]['x'], G_box.nodes[pt_nearest_edge[1]]['y'])
-    a_latl = (G_box.nodes[pt_nearest_edge[0]]['y'], G_box.nodes[pt_nearest_edge[0]]['x'])
-    b_latl = (G_box.nodes[pt_nearest_edge[1]]['y'], G_box.nodes[pt_nearest_edge[1]]['x'])
-    dist_ab = LineString([a_point, b_point]).project(o_point)
-    projected_orig_point = list(LineString([a_point, b_point]).interpolate(dist_ab).coords)
-    o1_latl = (projected_orig_point[0][1], projected_orig_point[0][0])
-
-    print(o1_latl)
-
-    new_v_node = {'x': o1_latl[0], 'y': o1_latl[1]}
-
-    G_box.add_node(u, **new_u_node)
-    G_box.add_node(v, **new_v_node)
-
-    G_box.add_edge(u_for_edge=u,
-                   v_for_edge=v,
-                   key=1, osmid=8945376,
-                   oneway=False,
-                   name=f"trench {u}",
-                   length=225.493)
+# node_id += 1
+# u = node_id
+# node_id += 1
+# v = node_id
+# print(v)
+# new_u_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
+#
+# pt_nearest_edge = edge = ox.distance.nearest_edges(G_box, centroid.xy[0][0], centroid.xy[1][0], interpolate=0.1)  # [1], [2] are start/end nodes of the nearest edge
+#
+# # project points onto neareset edge (a,b)
+# o_point = Point(centroid.xy[0][0], centroid.xy[1][0])
+# a_point = Point(G_box.nodes[pt_nearest_edge[0]]['x'], G_box.nodes[pt_nearest_edge[0]]['y'])
+# b_point = Point(G_box.nodes[pt_nearest_edge[1]]['x'], G_box.nodes[pt_nearest_edge[1]]['y'])
+# a_latl = (G_box.nodes[pt_nearest_edge[0]]['y'], G_box.nodes[pt_nearest_edge[0]]['x'])
+# b_latl = (G_box.nodes[pt_nearest_edge[1]]['y'], G_box.nodes[pt_nearest_edge[1]]['x'])
+# dist_ab = LineString([a_point, b_point]).project(o_point)
+# projected_orig_point = list(LineString([a_point, b_point]).interpolate(dist_ab).coords)
+# o1_latl = (projected_orig_point[0][1], projected_orig_point[0][0])
+#
+# print(o1_latl)
+#
+# new_v_node = {'x': o1_latl[0], 'y': o1_latl[1]}
+#
+# G_box.add_node(u, **new_u_node)
+# G_box.add_node(v, **new_v_node)
+#
+# G_box.add_edge(u_for_edge=u,
+#                v_for_edge=v,
+#                key=1, osmid=8945376,
+#                oneway=False,
+#                name=f"trench {u}",
+#                length=225.493)
 
 
 # Give different things different colours
