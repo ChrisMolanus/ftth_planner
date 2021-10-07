@@ -30,7 +30,8 @@ for trench in trench_network.trenches:
     osmid += 1
     g_box.add_edge(**trench, key=1, osmid=osmid)
 
-cost_parameters = CostParameters()
+
+cost_parameters = CostParameters.load_from_file("constance.yaml")
 fiber_network = get_fiber_network(g_box, cost_parameters)
 
 detailed_cost = DetailedCost(fiber_network, cost_parameters)
