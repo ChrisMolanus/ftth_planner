@@ -1,4 +1,5 @@
 import sys
+import ruamel.yaml
 
 
 class CostParameters:
@@ -18,14 +19,20 @@ class CostParameters:
         self.placement_of_ont: float = 1
         self.ont: float = 1
 
-    def dump_to_file(self):
+    def dump_to_file(self, file_path):
         yaml = ruamel.yaml.YAML()
         yaml.register_class(CostParameters)
-        yaml.dump(self, sys.stdout)
+        with open(file_path, 'w') as fp:
+            yaml.dump(self, fp)
 
 
 @staticmethod
 def load_from_file(file_path: str) -> CostParameters:
     yaml = ruamel.yaml.YAML()
     yaml.register_class(CostParameters)
-    return yaml.load(file_path)
+    with open(file_path) as fp:
+        data = yaml.load(fp)
+    return data
+
+
+
