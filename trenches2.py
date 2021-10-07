@@ -1,5 +1,7 @@
 from typing import Dict, List, Tuple, Set
 
+import geopandas
+import networkx
 import numpy as np
 import osmnx as ox
 import itertools
@@ -8,6 +10,8 @@ import matplotlib.pyplot as plt
 import math
 
 from shapely.geometry import Point, LineString, point
+
+from shapely.geometry import LineString
 
 distance_from_center_of_road = 0.0001
 
@@ -19,7 +23,7 @@ def point_distance_from_line(line: Tuple[dict, dict], point: dict) -> float:
     :param point: The point
     :return: The distance between the point and the line
     """
-    return (((point['x'] - line[0]['x']) * (line[1]['y'] - line[0]['y']))
+    return (((point['x'] - line[0]['x'])*(line[1]['y']-line[0]['y']))
             - ((point['y'] - line[0]['y']) * (line[1]['x'] - line[0]['x'])))
 
 
@@ -42,13 +46,13 @@ def angle(vector1: Tuple[float, float], vector2: Tuple[float, float]) -> float:
     """
     x1, y1 = vector1
     x2, y2 = vector2
-    inner_product = x1 * x2 + y1 * y2
+    inner_product = x1*x2 + y1*y2
     len1 = math.hypot(x1, y1)
     len2 = math.hypot(x2, y2)
     if y2 < y1:
-        return math.pi - math.acos(inner_product / (len1 * len2)) + math.pi
+        return math.pi - math.acos(inner_product/(len1*len2)) + math.pi
     else:
-        return math.acos(inner_product / (len1 * len2))
+        return math.acos(inner_product/(len1*len2))
 
 
 def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, float]:
@@ -120,6 +124,27 @@ class TrenchCorner(dict):
 
     def __eq__(self, other):
         return self['x'] == other['x'] and self['y'] == other['y']
+
+
+class Trench(dict):
+    def __init__(self, u_for_edge: int, v_for_edge: int, name: str, length: float, trench: bool = True,
+                 trench_crossing: bool = False, geometry: LineString = None,  *args, **kw):
+        super(Trench, self).__init__(*args, **kw)
+        self['u_for_edge'] = u_for_edge
+        self['v_for_edge'] = v_for_edge
+        self['name'] = name
+        self['length'] = length
+        self['trench'] = trench
+        self['trench_crossing'] = trench_crossing
+        if geometry is not None:
+            self['geometry'] = geometry
+            self.has_geometry = True
+        else:
+            self.has_geometry = False
+
+    def has_geometry(self)-> bool:
+        return self.has_geometry
+
 
 def get_parallel_line_points(u_node: dict, v_node: dict, vector_distance: float, side_id: int) -> Tuple[dict, dict]:
     """
@@ -263,10 +288,10 @@ def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: Li
             'v_for_edge': closest_v_for_trench,
             'geometry': LineString(linestring),
             'length': total_road_length,
-            'name': f"curved trench {street['name']}"}
+            'name': "Curved Road"}
 
 
-def get_trench_corners(network):
+def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[TrenchCorner]], Dict[str, List[Trench]]]:
     nodes = dict()
     output_trench_corners = dict()
     output_road_crossing = dict()
@@ -283,7 +308,7 @@ def get_trench_corners(network):
             street = network.get_edge_data(u, v)[0]
             if 'geometry' not in street:
                 # Its' a simple straight line so that the other intersection as point ot form the vector
-                radian = angle((1.0, 0.0), (neighbor['x'] - current_node['x'], neighbor['y'] - current_node['y']))
+                radian = angle((1.0, 0.0), (neighbor['x']-current_node['x'], neighbor['y']-current_node['y']))
             else:
                 # Street is not a simple line so we have to look at the geometry
                 l: List[Tuple[float, float]] = list(street['geometry'].coords)
@@ -310,7 +335,7 @@ def get_trench_corners(network):
         last_street_id = None
         last_node_id = None
         first_node_id = None
-        street_segment_id: str = ""
+        radian_street_segment_id: str = ""
         # Loop though the street vectors in a clockwise order (sorted_vs.sort())
         for radian in sorted_vs:
             v = neighbors[radian]
@@ -318,10 +343,9 @@ def get_trench_corners(network):
             s = [u, v]
             # we can get this segment twice to sorting the node ids make sure they have the same street_segment_id
             s.sort()
-            street_segment_id = str(s)
+            radian_street_segment_id = str(s)
             if len(streets) > 1:
-                # This can happen if the GBox hacked the street into multiple segments, I think
-                print("Crap len(streets) > 1")
+                print("Warning len(streets) > 1, This can happen if the GBox hacked the street into multiple segments")
                 print(streets)
 
             # We need two vectors to find a trench corner between them
@@ -331,14 +355,14 @@ def get_trench_corners(network):
                 # Find a point on a circle with the radius of distance_from_center_of_road at that angle
                 x, y = point_on_circle(current_node, distance_from_center_of_road, between_radian)
                 # Create a Trench Corner at that point
-                node = TrenchCorner(x, y, 2, u, {street_segment_id, last_street_id})
-                if street_segment_id not in output_trench_corners:
-                    output_trench_corners[street_segment_id] = set()
+                node = TrenchCorner(x, y, 2, u, {radian_street_segment_id, last_street_id})
+                if radian_street_segment_id not in output_trench_corners:
+                    output_trench_corners[radian_street_segment_id] = set()
                 if node not in output_trench_corners[first_street_id] \
                         and node not in output_trench_corners[last_street_id]:
                     node_id += 1
                     node['node_for_adding'] = node_id
-                    output_trench_corners[street_segment_id].add(node)
+                    output_trench_corners[radian_street_segment_id].add(node)
                     output_trench_corners[last_street_id].add(node)
                     nodes[node.__hash__()] = node
                 else:
@@ -353,11 +377,11 @@ def get_trench_corners(network):
                 last_node_id = node_id
             else:
                 first_radian = radian
-                first_street_id = street_segment_id
-                if street_segment_id not in output_trench_corners:
-                    output_trench_corners[street_segment_id] = set()
+                first_street_id = radian_street_segment_id
+                if radian_street_segment_id not in output_trench_corners:
+                    output_trench_corners[radian_street_segment_id] = set()
             last_radian = radian
-            last_street_id = street_segment_id
+            last_street_id = radian_street_segment_id
 
         # Now all we have left if to create a trench corner between the last vector and the first vector
         if len(sorted_vs) > 1:
@@ -381,7 +405,7 @@ def get_trench_corners(network):
             # So we make a "T" shape with a road crossing trench at the top
             between_radian = first_radian + math.pi * 0.5
             x, y = point_on_circle(current_node, distance_from_center_of_road, between_radian)
-            node1 = TrenchCorner(x, y, 2, u, {street_segment_id})
+            node1 = TrenchCorner(x, y, 2, u, {radian_street_segment_id})
             if node1 not in output_trench_corners[first_street_id] \
                     and node1 not in output_trench_corners[last_street_id]:
                 node_id += 1
@@ -392,7 +416,7 @@ def get_trench_corners(network):
 
             between_radian = first_radian + math.pi * 1.5
             x, y = point_on_circle(current_node, distance_from_center_of_road, between_radian)
-            node2 = TrenchCorner(x, y, 2, u, {street_segment_id})
+            node2 = TrenchCorner(x, y, 2, u, {radian_street_segment_id})
             if node2 not in output_trench_corners[first_street_id] \
                     and node2 not in output_trench_corners[last_street_id]:
                 node_id += 1
@@ -401,7 +425,13 @@ def get_trench_corners(network):
                 if first_street_id not in output_road_crossing:
                     output_road_crossing[first_street_id] = list()
 
-            output_road_crossing[first_street_id].append((node1['node_for_adding'], node2['node_for_adding']))
+            output_road_crossing[first_street_id].append(Trench(u_for_edge=node1['node_for_adding'],
+                                                                v_for_edge=node2['node_for_adding'],
+                                                                name=first_street_id,
+                                                                length=node_distance(node1, node2),
+                                                                trench_crossing=True
+                                                                ),
+                                                         )
 
     return output_trench_corners, output_road_crossing
 
@@ -420,57 +450,15 @@ def is_between(a: Tuple[float, float], b: Tuple[float, float], c: Tuple[float, f
     if abs(crossproduct) > 0.00000005:
         return False
 
-    dotproduct = (c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1]) * (b[1] - a[1])
+    dotproduct = (c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1])*(b[1] - a[1])
     if dotproduct < 0:
         return False
 
-    squaredlengthba = (b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1])
+    squaredlengthba = (b[0] - a[0])*(b[0] - a[0]) + (b[1] - a[1])*(b[1] - a[1])
     if dotproduct > squaredlengthba:
         return False
 
     return True
-
-
-def get_nearest_edge(G, point):
-    """
-    Return the nearest edge to a pair of coordinates. Pass in a graph and a tuple
-    with the coordinates. We first get all the edges in the graph. Secondly we compute
-    the euclidean distance from the coordinates to the segments determined by each edge.
-    The last step is to sort the edge segments in ascending order based on the distance
-    from the coordinates to the edge. In the end, the first element in the list of edges
-    will be the closest edge that we will return as a tuple containing the shapely
-    geometry and the u, v nodes.
-    Parameters
-    ----------
-    G : networkx multidigraph
-    point : tuple
-        The (lat, lng) or (y, x) point for which we will find the nearest edge
-        in the graph
-    Returns
-    -------
-    closest_edge_to_point : tuple (shapely.geometry, u, v)
-        A geometry object representing the segment and the coordinates of the two
-        nodes that determine the edge section, u and v, the OSM ids of the nodes.
-    """
-    gdf = ox.graph_to_gdfs(G, nodes=False, fill_edge_geometry=True)
-    graph_edges = gdf[["geometry", "u", "v"]].values.tolist()
-
-    edges_with_distances = [
-        (
-            graph_edge,
-            Point(tuple(reversed(point))).distance(graph_edge[0])
-        )
-        for graph_edge in graph_edges
-    ]
-
-    edges_with_distances = sorted(edges_with_distances, key=lambda x: x[1])
-    closest_edge_to_point = edges_with_distances[0][0]
-
-    geometry, u, v = closest_edge_to_point
-
-    # log('Found nearest edge ({}) to point {} in {:,.2f} seconds'.format((u, v), point, time.time() - start_time))
-
-    return u, v
 
 
 def intersection_between_points(l1: List[dict], l2: List[dict]) -> bool:
@@ -506,189 +494,167 @@ def intersection_between_points(l1: List[dict], l2: List[dict]) -> bool:
         return False
 
 
-G_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48386, 4.49521,
-                           network_type='drive',
-                           simplify=True,
-                           retain_all=False,
-                           truncate_by_edge=True)
+class TrenchNetwork:
+    def __init__(self, trench_corners: Dict[int, TrenchCorner], trenches: List[Trench]):
+        self.trenchCorners = trench_corners
+        self.trenches = trenches
 
-trench_corners, road_crossing = get_trench_corners(G_box)
 
-for osmid, corners in trench_corners.items():
-    for corner in corners:
-        # TODO: addes nodes more then ones, but it should be ok since they have the same ID
-        G_box.add_node(**corner)
+def get_trench_network(road_network: networkx.MultiDiGraph,
+                       building_gdf: geopandas.GeoDataFrame) -> TrenchNetwork:
 
-new_edges = list()
-new_pp = list()
-new_curved_pp = list()
-street_names = list()
-point_edges = dict()
-processed_streets = set()
-for u, v, key, street in G_box.edges(keys=True, data=True):
-    added_trenches = set()
+    trench_corners, road_crossing = get_trench_corners(road_network)
 
-    u_node = G_box.nodes[u]
-    v_node = G_box.nodes[v]
-    s = [u, v]
-    s.sort()
-    street_segment_id = str(s)
-    # Mke sure we have trench corners that re on this street
-    if street_segment_id in trench_corners:
-        corners = trench_corners[street_segment_id]
+    new_pp = list()
+    new_curved_pp = list()
+    point_edges = dict()
+    for u, v, key, street in road_network.edges(keys=True, data=True):
+        added_trenches = set()
 
-        # Check if this is a curved road
-        if 'geometry' not in street:
+        u_node = road_network.nodes[u]
+        v_node = road_network.nodes[v]
+        s = [u, v]
+        s.sort()
+        street_segment_id = str(s)
+        # Make sure we have trench corners that re on this street
+        if street_segment_id in trench_corners:
+            corners = trench_corners[street_segment_id]
 
-            # Since that same street can have multiple segments between intersections
-            # make sure we have the trench corners of the intersections of this street segment
-            filtered_corners = set()
-            for corner in corners:
-                if corner['u'] == u or corner['u'] == v:
-                    filtered_corners.add(corner)
+            # Check if this is a curved road
+            if 'geometry' not in street:
 
-            street_sides = [[], []]
-            for corner in filtered_corners:
-                if point_distance_from_line((u_node, v_node), corner) > 0:
-                    street_sides[1].append(corner)
-                else:
-                    street_sides[0].append(corner)
+                # Since that same street can have multiple segments between intersections
+                # make sure we have the trench corners of the intersections of this street segment
+                filtered_corners = set()
+                for corner in corners:
+                    if corner['u'] == u or corner['u'] == v:
+                        filtered_corners.add(corner)
 
-            for side_id in range(0, len(street_sides)):
-                side_corners = street_sides[side_id]
-                # Create possible trench corner pairs but looking for all possible combinations of corner points
-                for point_pair1 in list(itertools.combinations(side_corners, 2)):
-                    # Only consider corner point pairs of points on different intersections
-                    # Otherwize they are on the same intersections and that is a road crossing
-                    if point_pair1[0]['u'] != point_pair1[1]['u']:
-                        # trench_candidate as to be a list because tuples are immutable,
-                        # and we might invalidate it later whe we chose from the candidates
-                        trench_candidate = [point_pair1[0], point_pair1[1], street['name']]
+                street_sides = [[], []]
+                for corner in filtered_corners:
+                    if point_distance_from_line((u_node, v_node), corner) > 0:
+                        street_sides[1].append(corner)
+                    else:
+                        street_sides[0].append(corner)
 
-                        # There is no need to have multiple trenches between the same two points
-                        # So only process a pair ones
-                        xs = [trench_candidate[0]['x'], trench_candidate[1]['x']]
-                        ys = [trench_candidate[0]['y'], trench_candidate[1]['y']]
-                        xs.sort()
-                        ys.sort()
-                        trench_candidate_hash = hash((xs[0], xs[1], ys[0], ys[1]))
-                        if not intersection_between_points([u_node, v_node], trench_candidate) \
-                                and trench_candidate_hash not in added_trenches:
-                            added_trenches.add(trench_candidate_hash)
+                for side_id in range(0, len(street_sides)):
+                    side_corners = street_sides[side_id]
+                    # Create possible trench corner pairs but looking for all possible combinations of corner points
+                    for point_pair1 in list(itertools.combinations(side_corners, 2)):
+                        # Only consider corner point pairs of points on different intersections
+                        # Otherwize they are on the same intersections and that is a road crossing
+                        if point_pair1[0]['u'] != point_pair1[1]['u']:
+                            # trench_candidate as to be a list because tuples are immutable,
+                            # and we might invalidate it later whe we chose from the candidates
+                            trench_candidate = [point_pair1[0], point_pair1[1]]
 
-                            # Because it is possible that their are more than one pair that could from a trench
-                            # on one side of a street segment, we collect them all and find the shortest one later
-                            if street_segment_id not in point_edges:
-                                point_edges[street_segment_id] = dict()
-                            if trench_candidate_hash not in point_edges[street_segment_id]:
-                                point_edges[street_segment_id][trench_candidate_hash] = [[], []]
+                            # There is no need to have multiple trenches between the same two points
+                            # So only process a pair ones
+                            xs = [trench_candidate[0]['x'], trench_candidate[1]['x']]
+                            ys = [trench_candidate[0]['y'], trench_candidate[1]['y']]
+                            xs.sort()
+                            ys.sort()
+                            trench_candidate_hash = hash((xs[0], xs[1], ys[0], ys[1]))
+                            if not intersection_between_points([u_node, v_node], trench_candidate) \
+                                    and trench_candidate_hash not in added_trenches:
+                                added_trenches.add(trench_candidate_hash)
 
-                            point_edges[street_segment_id][trench_candidate_hash][side_id].append(trench_candidate)
+                                # Because it is possible that their are more than one pair that could from a trench
+                                # on one side of a street segment, we collect them all and find the shortest one later
+                                if street_segment_id not in point_edges:
+                                    point_edges[street_segment_id] = dict()
+                                if trench_candidate_hash not in point_edges[street_segment_id]:
+                                    point_edges[street_segment_id][trench_candidate_hash] = [[], []]
 
-                            new_pp.append(trench_candidate)
+                                point_edges[street_segment_id][trench_candidate_hash][side_id].append(trench_candidate)
 
-        else:
-            # Since that same street can have multiple segments between intersections
-            # make sure we have the trench corners of the intersections of this street segment
-            u_filtered_corners = set()
-            for corner in corners:
-                if corner['u'] == u:
-                    u_filtered_corners.add(corner)
+                                new_pp.append(trench_candidate)
 
-            v_filtered_corners = set()
-            for corner in corners:
-                if corner['u'] == v:
-                    v_filtered_corners.add(corner)
-
-            curved_line = list(street['geometry'].coords)
-            u_node = G_box.nodes[u]
-            v_node = G_box.nodes[v]
-            if curved_line[0][0] == u_node['x'] and curved_line[0][1] == u_node['y']:
-                first_segment = (u_node, {'x': curved_line[1][0], 'y': curved_line[1][1]})
-                last_segment = ({'x': curved_line[-2][0], 'y': curved_line[-2][1]}, v_node)
             else:
-                first_segment = (u_node, {'x': curved_line[-2][0], 'y': curved_line[-2][1]})
-                last_segment = ({'x': curved_line[1][0], 'y': curved_line[1][1]}, v_node)
+                # Since that same street can have multiple segments between intersections
+                # make sure we have the trench corners of the intersections of this street segment
+                u_filtered_corners = set()
+                for corner in corners:
+                    if corner['u'] == u:
+                        u_filtered_corners.add(corner)
 
-            u_street_sides = [[], []]
-            for corner in u_filtered_corners:
-                if point_distance_from_line(first_segment, corner) > 0:
-                    u_street_sides[1].append(corner)
+                v_filtered_corners = set()
+                for corner in corners:
+                    if corner['u'] == v:
+                        v_filtered_corners.add(corner)
+
+                curved_line = list(street['geometry'].coords)
+                u_node = road_network.nodes[u]
+                v_node = road_network.nodes[v]
+                if curved_line[0][0] == u_node['x'] and curved_line[0][1] == u_node['y']:
+                    first_segment = (u_node, {'x': curved_line[1][0], 'y': curved_line[1][1]})
+                    last_segment = ({'x': curved_line[-2][0], 'y': curved_line[-2][1]}, v_node)
                 else:
-                    u_street_sides[0].append(corner)
+                    first_segment = (u_node, {'x': curved_line[-2][0], 'y': curved_line[-2][1]})
+                    last_segment = ({'x': curved_line[1][0], 'y': curved_line[1][1]}, v_node)
 
-            v_street_sides = [[], []]
-            for corner in v_filtered_corners:
-                if point_distance_from_line(last_segment, corner) > 0:
-                    v_street_sides[1].append(corner)
-                else:
-                    v_street_sides[0].append(corner)
+                u_street_sides = [[], []]
+                for corner in u_filtered_corners:
+                    if point_distance_from_line(first_segment, corner) > 0:
+                        u_street_sides[1].append(corner)
+                    else:
+                        u_street_sides[0].append(corner)
 
-            for side_id in range(0, 2):
-                u_side_corners = u_street_sides[side_id]
-                v_side_corners = v_street_sides[side_id]
-                if len(u_side_corners) > 0 and len(v_side_corners) > 0:
-                    curved_trench = get_trench_linestring(u_side_corners, v_side_corners, street,
-                                                          distance_from_center_of_road, side_id)
-                    new_curved_pp.append(curved_trench)
-                    street_names.append(street['name'])
-                else:
-                    print(f"Can't find side corners {street}")
+                v_street_sides = [[], []]
+                for corner in v_filtered_corners:
+                    if point_distance_from_line(last_segment, corner) > 0:
+                        v_street_sides[1].append(corner)
+                    else:
+                        v_street_sides[0].append(corner)
 
-# If there are more than one possibility to have a trench on one side of the street segment,
-# Find the shortest one and make the others as invalid i.e. (None, None)
-# TODO: split by side of road and find shortest on ether side separately
-for street_segment_id, streets in point_edges.items():
-    for trench_candidate_hash, sides in streets.items():
-        for side in sides:
-            if len(side) > 1:
-                shortest_pair = None
-                shortest_distance = 1000000
-                for trench_candidate in side:
-                    if trench_candidate[0] is not None:
-                        new_dist = node_distance(trench_candidate[0], trench_candidate[1])
-                        if new_dist < shortest_distance:
-                            if shortest_pair is not None:
-                                # Mark trench to not be used
-                                shortest_pair[0] = None
-                                shortest_pair[1] = None
-                            shortest_pair = trench_candidate
-                            shortest_distance = new_dist
+                for side_id in range(0, 2):
+                    u_side_corners = u_street_sides[side_id]
+                    v_side_corners = v_street_sides[side_id]
+                    if len(u_side_corners) > 0 and len(v_side_corners) > 0:
+                        curved_trench = get_trench_linestring(u_side_corners, v_side_corners, street,
+                                                              distance_from_center_of_road, side_id)
+                        new_curved_pp.append(curved_trench)
+                    else:
+                        print(f"Can't find side corners {street}")
 
-# Add the trenches to the network
-for trench_candidate in new_pp:
-    # (None, None) pairs were marked as invalid trenches above
-    if trench_candidate[0] is not None:
-        G_box.add_edge(u_for_edge=trench_candidate[0]['node_for_adding'],
-                       v_for_edge=trench_candidate[1]['node_for_adding'],
-                       key=1, osmid=8945376,
-                       curved=False,
-                       trench=True,
-                       name=f"trench {trench_candidate[2]}",
-                       length=225.493)
+    # If there are more than one possibility to have a trench on one side of the street segment,
+    # Find the shortest one and make the others as invalid i.e. (None, None)
+    # TODO: split by side of road and find shortest on ether side separately
+    for street_segment_id, streets in point_edges.items():
+        for trench_candidate_hash, sides in streets.items():
+            for side in sides:
+                if len(side) > 1:
+                    shortest_pair = None
+                    shortest_distance = 1000000
+                    for trench_candidate in side:
+                        if trench_candidate[0] is not None:
+                            new_dist = node_distance(*trench_candidate)
+                            if new_dist < shortest_distance:
+                                if shortest_pair is not None:
+                                    # Mark trench to not be used
+                                    shortest_pair[0] = None
+                                    shortest_pair[1] = None
+                                shortest_pair = trench_candidate
+                                shortest_distance = new_dist
 
-# Add the curved trenches to the network
-for curved_trench, street_name in zip(new_curved_pp, street_names):
-    G_box.add_edge(**curved_trench,
-                   key=1, osmid=8945376,
-                   curved=True,
-                   trench=True,
-                   oneway=False)
+    trenches: List[Trench] = list()
+    # Add the trenches to the network
+    for trench_candidate in new_pp:
+        # (None, None) pairs were marked as invalid trenches above
+        if trench_candidate[0] is not None:
+            trenches.append(Trench(u_for_edge=trench_candidate[0]['node_for_adding'],
+                                   v_for_edge=trench_candidate[1]['node_for_adding'],
+                                   name=trench_candidate[0]['street_ids'],
+                                   length=node_distance(*trench_candidate)))
 
-# Add the crossings, trenches connecting corners around an intersection
-for street_segment_id, crossings in road_crossing. items():
-    for crossing in crossings:
-        G_box.add_edge(u_for_edge=crossing[0],
-                       v_for_edge=crossing[1],
-                       key=1, osmid=8945376,
-                       oneway=False,
-                       name=f"trench {street_segment_id}",
-                       length=225.493,
-                       trench=True,
-                       trench_crossing=True)
+    # Add the curved trenches to the network
+    for curved_trench in new_curved_pp:
+        trenches.append(Trench(**curved_trench))
 
-# Get buildings
-building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tags={'building': True})
+    # Add the crossings, trenches connecting corners around an intersection
+    for street_segment_id, crossings in road_crossing.items():
+        for crossing in crossings:
+            trenches.append(crossing)
 
 # Get Building centroids
 # TODO: Add trenches from building centroid to nearest trench
@@ -738,18 +704,13 @@ for _, building in building_gdf.iterrows():
                        name=f"trench {u}",
                        trench=True)
 
+    # Get Building centroids
+    building_centroids = list()
+    for _, building in building_gdf.iterrows():
+        centroid = building['geometry'].centroid
+        building_centroids.append([centroid.xy[0][0], centroid.xy[1][0]])
+    # TODO: Add trenches from building centroid to nearest trench
 
-# Give different things different colours
-ec = ['yellow' if 'highway' in d else
-      'gray' if 'trench_crossing' in d else
-      'blue' if 'trench' in d
-      else 'red'
-      for _, _, _, d in G_box.edges(keys=True, data=True)]
 
-# Plot the network
-fig, ax = ox.plot_graph(G_box, bgcolor='white', edge_color=ec,
-                        node_size=0, edge_linewidth=0.5,
-                        show=False, close=False)
-# Plot the buildings
-ox.plot_footprints(building_gdf, ax=ax, color="orange", alpha=0.5)
-plt.show()
+
+    return TrenchNetwork(trench_corners, trenches)
