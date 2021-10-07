@@ -7,7 +7,7 @@ import itertools
 import matplotlib.pyplot as plt
 import math
 
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, LineString, point
 
 distance_from_center_of_road = 0.0001
 
@@ -64,17 +64,31 @@ def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, 
     return x, y
 
 def point_on_line(u, v, c, return_distance=False):
-    a = np.array([u['x'], u['y']])
-    b = np.array([v['x'], v['y']])
-    p = np.array([c['x'], c['y']])
-    ap = p - a
-    ab = b - a
-    result = a + np.dot(ap, ab) / np.dot(ab, ab) * ab
-    dist = np.sum((p - result) ** 2)
+
+    p1 = np.array([u['x'], u['y']])
+    p2 = np.array([v['x'], v['y']])
+    p3 = np.array([c['x'], c['y']])
+    l2 = np.sum((p1 - p2) ** 2)
+    t = np.sum((p3 - p1) * (p2 - p1)) / l2
+    # if t > 1 or t < 0:
+    #     print('p3 does not project onto p1-p2 line segment')
+
+    # if you need the point to project on line segment between p1 and p2 or closest point of the line segment
+    #t = max(0, min(1, np.sum((p3 - p1) * (p2 - p1)) / l2))
+
+    projection = p1 + t * (p2 - p1)
+
+    # a = np.array([u['x'], u['y']])
+    # b = np.array([v['x'], v['y']])
+    # p = np.array([c['x'], c['y']])
+    # ap = p - a
+    # ab = b - a
+    # result = a + np.dot(ap, ab) / np.dot(ab, ab) * ab
+    dist = np.sum((p3 - projection) ** 2)
     if return_distance:
-        return result, dist
+        return projection, dist
     else:
-        return result
+        return projection
 
 
 
@@ -249,7 +263,7 @@ def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: Li
             'v_for_edge': closest_v_for_trench,
             'geometry': LineString(linestring),
             'length': total_road_length,
-            'name': "Curved Road"}
+            'name': f"curved trench {street['name']}"}
 
 
 def get_trench_corners(network):
@@ -659,7 +673,6 @@ for curved_trench, street_name in zip(new_curved_pp, street_names):
                    key=1, osmid=8945376,
                    curved=True,
                    trench=True,
-                   #name=f"trench {street_name}",
                    oneway=False)
 
 # Add the crossings, trenches connecting corners around an intersection
@@ -691,31 +704,26 @@ for _, building in building_gdf.iterrows():
     v_id = node_id
     distance = float('inf')
     for u, v, key, street in G_box.edges(keys=True, data=True):
-        if str(street_name) in street['name']:
+        if str(street_name) in street['name'] and "trench" in street['name']:
             if 'geometry' not in street:
                 u_node = G_box.nodes[u]
                 v_node = G_box.nodes[v]
-                #a_point = Point(u_node['x'], u_node['y'])
-                #b_point = Point(v_node['x'], v_node['y'])
                 new_u_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
                 projected, new_distance = point_on_line(u_node, v_node, new_u_node, return_distance=True)
                 if new_distance < distance:
                     new_v_node = {'x': projected[0], 'y': projected[1]}
                     distance = new_distance
             else:
-                continue
                 #projection on curved road
-                # u_node = G_box.nodes[u]
-                # v_node = G_box.nodes[v]
-                # last_segment = ''
-                # first_segment = [street['geometry'].xy[0][0], street['geometry'].xy[1][0]]
-                # for x, y in zip(street['geometry'].xy[0], street['geometry'].xy[1]):
+                last_segment = ''
+                # new_u_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
+                # for sub_x, sub_y in street['geometry'].coords:
                 #     if last_segment == '':
-                #         last_segment = {'x': x, 'y': y}
+                #         last_segment = {'x': sub_x, 'y': sub_y}
                 #     else:
-                #         new_u_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
-                #         geom_u = {'x': x, 'y': y}
-                #         projected, new_distance = point_on_line(geom_u, last_segment, new_u_node, return_distance=True)
+                #         sub_u_node = {'x': sub_x, 'y': sub_y}
+                #         projected, new_distance = point_on_line(sub_u_node, last_segment, new_u_node, return_distance=True)
+                #         last_segment = sub_u_node
                 #         if new_distance < distance:
                 #             new_v_node = {'x': projected[0], 'y': projected[1]}
                 #             distance = new_distance
@@ -728,40 +736,7 @@ for _, building in building_gdf.iterrows():
                        key=1, osmid=8945376,
                        oneway=False,
                        name=f"trench {u}",
-                       length=225.493)
-
-# node_id += 1
-# u = node_id
-# node_id += 1
-# v = node_id
-# print(v)
-# new_u_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
-#
-# pt_nearest_edge = edge = ox.distance.nearest_edges(G_box, centroid.xy[0][0], centroid.xy[1][0], interpolate=0.1)  # [1], [2] are start/end nodes of the nearest edge
-#
-# # project points onto neareset edge (a,b)
-# o_point = Point(centroid.xy[0][0], centroid.xy[1][0])
-# a_point = Point(G_box.nodes[pt_nearest_edge[0]]['x'], G_box.nodes[pt_nearest_edge[0]]['y'])
-# b_point = Point(G_box.nodes[pt_nearest_edge[1]]['x'], G_box.nodes[pt_nearest_edge[1]]['y'])
-# a_latl = (G_box.nodes[pt_nearest_edge[0]]['y'], G_box.nodes[pt_nearest_edge[0]]['x'])
-# b_latl = (G_box.nodes[pt_nearest_edge[1]]['y'], G_box.nodes[pt_nearest_edge[1]]['x'])
-# dist_ab = LineString([a_point, b_point]).project(o_point)
-# projected_orig_point = list(LineString([a_point, b_point]).interpolate(dist_ab).coords)
-# o1_latl = (projected_orig_point[0][1], projected_orig_point[0][0])
-#
-# print(o1_latl)
-#
-# new_v_node = {'x': o1_latl[0], 'y': o1_latl[1]}
-#
-# G_box.add_node(u, **new_u_node)
-# G_box.add_node(v, **new_v_node)
-#
-# G_box.add_edge(u_for_edge=u,
-#                v_for_edge=v,
-#                key=1, osmid=8945376,
-#                oneway=False,
-#                name=f"trench {u}",
-#                length=225.493)
+                       trench=True)
 
 
 # Give different things different colours
