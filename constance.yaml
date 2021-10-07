@@ -1,0 +1,13 @@
+!CostParameters
+dig_per_km: 1
+dig_per_road_crossing: 1
+fiber_drop_pair_per_km: 1
+fiber_96core_per_km: 1
+fiber_install_per_km: 1
+fiber_ds_to_core_per_km: 1
+placement_of_street_cabinet: 1
+street_cabinet: 1
+placement_of_ds: 1
+ds: 1
+placement_of_ont: 1
+ont: 1
