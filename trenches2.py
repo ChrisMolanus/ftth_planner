@@ -67,8 +67,24 @@ def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, 
     y = center['y'] + (radius * math.sin(radian))
     return x, y
 
-def point_on_line(u, v, c, return_distance=False):
 
+def get_perpendicular_line(u_node, v_node, point)->Tuple[dict, dict]:
+    dx = u_node['x'] - v_node['x']
+    dy = u_node['y'] - v_node['y']
+
+    road_length = math.sqrt(dx ** 2 + dy ** 2)
+    if road_length == 0:
+        road_length = 0.00001
+    t = distance_from_center_of_road / road_length
+
+    # Perpendicular line
+    dx1 = -1 * dy
+    dy1 = dx
+
+    return ({'x':point['x'], 'y':point['y']}, {'x':point['x']*dx1, 'y':point['y']*dy1})
+
+
+def point_on_line(u, v, c, return_distance=False):
     p1 = np.array([u['x'], u['y']])
     p2 = np.array([v['x'], v['y']])
     p3 = np.array([c['x'], c['y']])
@@ -188,6 +204,19 @@ def get_parallel_line_points(u_node: dict, v_node: dict, vector_distance: float,
 
     return new_u_node, new_v_node
 
+
+def get_intersection_point2(line1: Tuple[dict,dict],
+                           line2: Tuple[dict, dict]) -> dict:
+    """
+    Returns the point where the two lines intersect
+    :param line1: Fist line
+    :param line2: Second line
+    :return: The point where the two lines intersect
+    """
+    l1 = ((line1[0]['x'], line1[0]['y']), (line1[1]['x'], line1[1]['y']))
+    l2 = ((line2[0]['x'], line2[0]['y']), (line2[1]['x'], line2[1]['y']))
+    p = get_intersection_point(l1, l2)
+    return {'x':p[0], 'y':p[1]}
 
 def get_intersection_point(line1: Tuple[Tuple[float, float], Tuple[float, float]],
                            line2: Tuple[Tuple[float, float], Tuple[float, float]]) -> Tuple[float, float]:
@@ -654,13 +683,13 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     # Add the crossings, trenches connecting corners around an intersection
     for street_segment_id, crossings in road_crossing.items():
         for crossing in crossings:
-            trenches.append(crossing)
-            print(crossing)
+            if isinstance(crossing, Trench):
+                trenches.append(crossing)
 
     # Get Building centroids
     # TODO: Add trenches from building centroid to nearest trench
     building_centroids = list()
-    node_id = road_network.number_of_nodes()
+    node_id = 500000000
     for _, building in building_gdf.iterrows():
         street_name = building['addr:street']
         centroid = building['geometry'].centroid
@@ -670,35 +699,71 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
         node_id += 1
         v_id = node_id
         distance = float('inf')
-        for u, v, key, street in road_network.edges(keys=True, data=True):
-            if str(street_name) in street['name'] and "trench" in street['name']:
-                if 'geometry' not in street:
-                    u_node = road_network.nodes[u]
-                    v_node = road_network.nodes[v]
-                    new_u_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
+        new_u_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
+        for trench in trenches:
+            if str(street_name) in trench['name']:
+                if 'geometry' not in trench:
+                    for intersection_osmid, corners in trench_corners.items():
+                        for corner in corners:
+                            if corner['node_for_adding'] == trench['u_for_edge']:
+                                u_node = corner
+                            if corner['node_for_adding'] == trench['v_for_edge']:
+                                v_node = corner
                     projected, new_distance = point_on_line(u_node, v_node, new_u_node, return_distance=True)
                     if new_distance < distance:
                         new_v_node = {'x': projected[0], 'y': projected[1]}
                         distance = new_distance
-                else:
-                    #projection on curved road
-                    last_segment = ''
-                    # new_u_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
-                    # for sub_x, sub_y in street['geometry'].coords:
-                    #     if last_segment == '':
-                    #         last_segment = {'x': sub_x, 'y': sub_y}
-                    #     else:
-                    #         sub_u_node = {'x': sub_x, 'y': sub_y}
-                    #         projected, new_distance = point_on_line(sub_u_node, last_segment, new_u_node, return_distance=True)
-                    #         last_segment = sub_u_node
-                    #         if new_distance < distance:
-                    #             new_v_node = {'x': projected[0], 'y': projected[1]}
-                    #             distance = new_distance
+                    if distance != float('inf'):
+                        # trenches.remove(trench)
+                        # road_network.add_node(u_id, **new_u_node)
+                        # road_network.add_node(v_id, **new_v_node)
+                        # trenches.append(Trench(u_for_edge=trench['u_for_edge'],
+                        #                        v_for_edge=v_id,
+                        #                        name=f"trench {street_name}",
+                        #                        length=node_distance(trench_candidate[0], trench_candidate[1])))
+                        # trenches.append(Trench(u_for_edge=v_id,
+                        #                        v_for_edge=trench['v_for_edge'],
+                        #                        name=f"trench {street_name}",
+                        #                        length=node_distance(trench_candidate[0], trench_candidate[1])))
 
-    if distance != float('inf'):
-        #G_box.add_node(v_id, **new_v_node)
-        #G_box.add_node(u_id, **new_u_node)
-        trenches.append(Trench(u_for_edge=u_id,
-                               v_for_edge=v_id,
-                               name= f"trench {u}"))
-    return TrenchNetwork(trench_corners, trenches)
+                        # # trench_corners[v_id] = new_v_node
+                        road_network.add_node(u_id, **new_u_node)
+                        road_network.add_node(v_id, **new_v_node)
+                        road_network.add_edge(u_for_edge=u_id,
+                                              v_for_edge=v_id,
+                                              name=f"trench {u_id}")
+                else:
+                    for intersection_osmid, corners in trench_corners.items():
+                        for corner in corners:
+                            if corner['node_for_adding'] == trench['u_for_edge']['node_for_adding']:
+                                u_node = corner
+                            if corner['node_for_adding'] == trench['v_for_edge']['node_for_adding']:
+                                v_node = corner
+                    #projection on curved road
+                    last_node = ''
+                    #for sub_x, sub_y in trench['geometry'].coords:
+                    coords = list(trench['geometry'].coords)
+                    shortest_i = None
+                    for i in range(0, len(coords)):
+                        sub_x, sub_y = coords[i]
+                        if last_node == '':
+                            last_node = {'x': sub_x, 'y': sub_y}
+                        else:
+                            sub_u_node = {'x': sub_x, 'y': sub_y}
+                            #projected, new_distance = point_on_line(sub_u_node, last_node, new_u_node, return_distance=True)
+                            perpendicular_line = get_perpendicular_line(last_node, sub_u_node, new_u_node)
+                            projected = get_intersection_point2(perpendicular_line, (last_node, sub_u_node))
+                            new_distance = node_distance(projected, new_u_node)
+                            last_node = sub_u_node
+                            if new_distance < distance:
+                                new_v_node = projected
+                                distance = new_distance
+                                shortest_i = i
+                    if shortest_i is not None:
+                        # trench_corners[v_id] = new_v_node
+                        coords.insert(shortest_i, (new_v_node['x'], new_v_node['y']))
+                        trench['geometry'] = LineString(coords)
+
+
+
+    return TrenchNetwork(trench_corners, trenches), road_network
