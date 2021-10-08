@@ -340,7 +340,13 @@ def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[Tr
                 if last_node_id is not None:
                     if last_street_id not in output_road_crossing:
                         output_road_crossing[last_street_id] = list()
-                    output_road_crossing[last_street_id].append((last_node_id, node_id))
+                    output_road_crossing[last_street_id].append(Trench(u_for_edge=last_node_id,
+                                                                       v_for_edge=node_id,
+                                                                       name=last_street_id,
+                                                                       length=2 * distance_from_center_of_road,
+                                                                       trench_crossing=True
+                                                                       )
+                                                                )
                 else:
                     first_node_id = node_id
                 last_node_id = node_id
@@ -365,10 +371,23 @@ def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[Tr
                 output_trench_corners[last_street_id].add(node)
                 if last_street_id not in output_road_crossing:
                     output_road_crossing[last_street_id] = list()
-                output_road_crossing[last_street_id].append((last_node_id, node_id))
+                output_road_crossing[last_street_id].append(Trench(u_for_edge=last_node_id,
+                                                                    v_for_edge=node_id,
+                                                                    name=last_street_id,
+                                                                    length=2*distance_from_center_of_road,
+                                                                    trench_crossing=True
+                                                                   )
+                                                            )
+
                 if first_street_id not in output_road_crossing:
                     output_road_crossing[first_street_id] = list()
-                output_road_crossing[first_street_id].append((node_id, first_node_id))
+                output_road_crossing[first_street_id].append(Trench(u_for_edge=node_id,
+                                                                    v_for_edge=first_node_id,
+                                                                    name=first_street_id,
+                                                                    length=2*distance_from_center_of_road,
+                                                                    trench_crossing=True
+                                                                    )
+                                                            )
         elif len(sorted_vs) == 1:
             # This is a Dead end road, there was only 1 neighbor
             # So we make a "T" shape with a road crossing trench at the top
