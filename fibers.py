@@ -35,9 +35,9 @@ class Equipment:
 
 class FiberNetwork:
     def __init__(self):
-        self.fiber_network: networkx.MultiDiGraph
-        self.fibers: Dict[int, FiberCable]
-        self.equipment: Dict[int, Equipment]
+        self.fiber_network: networkx.MultiDiGraph = None
+        self.fibers: Dict[int, FiberCable] = None
+        self.equipment: Dict[int, Equipment] = None
 
 
 def get_fiber_network(trench_network: networkx.MultiDiGraph, cost_parameters: CostParameters) -> FiberNetwork:
