@@ -14,7 +14,7 @@ g_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48386, 4.49521,
                            retain_all=False,
                            truncate_by_edge=True)
 building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tags={'building': True})
-trench_network, g_box = get_trench_network(g_box, building_gdf)
+trench_network = get_trench_network(g_box, building_gdf)
 
 # TODO: make separate network for trenches since fiber planning only needs that network and not the roads
 
@@ -35,8 +35,9 @@ fiber_network = get_fiber_network(g_box, cost_parameters)
 
 detailed_cost = DetailedCost(fiber_network, cost_parameters)
 
-detailed_report = get_detailed_report(detailed_cost, g_box, building_gdf)
+detailed_report = get_detailed_report(detailed_cost, building_gdf)
 
-detailed_report.plot.show()
+if detailed_report.plot is not None:
+    detailed_report.plot.show()
 
 # TODO: convert detailed_report to PDF
