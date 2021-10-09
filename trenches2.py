@@ -144,13 +144,14 @@ class TrenchCorner(dict):
 
 
 class Trench(dict):
-    def __init__(self, u_for_edge: int, v_for_edge: int, name: str, length: float, trench: bool = True,
+    def __init__(self, u_for_edge: int, v_for_edge: int, name: str, length: float, street_names: Set[str], trench: bool = True,
                  trench_crossing: bool = False, geometry: LineString = None,  *args, **kw):
         super(Trench, self).__init__(*args, **kw)
         self['u_for_edge'] = u_for_edge
         self['v_for_edge'] = v_for_edge
         self['name'] = name
         self['length'] = length
+        self.street_names = street_names
         self['trench'] = trench
         self['trench_crossing'] = trench_crossing
         if geometry is not None:
@@ -162,6 +163,14 @@ class Trench(dict):
     def has_geometry(self)-> bool:
         return self.has_geometry
 
+    def __str__(self):
+        if not self['trench_crossing']:
+            if self.has_geometry:
+                return "Curved trench " + self['name']
+            else:
+                return "Trench " + self['name']
+        else:
+            return "Road crossing Trench " + self['name']
 
 def get_parallel_line_points(u_node: dict, v_node: dict, vector_distance: float, side_id: int) -> Tuple[dict, dict]:
     """
@@ -314,11 +323,17 @@ def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: Li
             closest_v_for_trench = v_corner
     linestring.append((closest_v_for_trench['x'], closest_v_for_trench['y']))
 
+    if isinstance(street['name'], str):
+        street_names = {street['name']}
+    else:
+        street_names = set(street['name'])
+
     return {'u_for_edge': closest_u_for_trench['node_for_adding'],
             'v_for_edge': closest_v_for_trench['node_for_adding'],
             'geometry': LineString(linestring),
             'length': total_road_length,
-            'name': f"Curved Trench {street['name']}"}
+            'name': f"Curved Trench {street['name']}",
+            'street_names': street_names}
 
 
 def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[TrenchCorner]], Dict[str, List[Trench]]]:
@@ -370,10 +385,10 @@ def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[Tr
         for radian in sorted_vs:
             v = neighbors[radian]
             streets = network.get_edge_data(u, v)
-            s = [u, v]
+            street_names = [u, v]
             # we can get this segment twice to sorting the node ids make sure they have the same street_segment_id
-            s.sort()
-            radian_street_segment_id = str(s)
+            street_names.sort()
+            radian_street_segment_id = str(street_names)
             if len(streets) > 1:
                 print("Warning len(streets) > 1, This can happen if the GBox hacked the street into multiple segments")
                 print(streets)
@@ -405,6 +420,7 @@ def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[Tr
                                                                        v_for_edge=node_id,
                                                                        name=last_street_id,
                                                                        length=2 * distance_from_center_of_road,
+                                                                       street_names=last_street_names,
                                                                        trench_crossing=True
                                                                        )
                                                                 )
@@ -414,10 +430,18 @@ def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[Tr
             else:
                 first_radian = radian
                 first_street_id = radian_street_segment_id
+                if isinstance(street_names, str):
+                    first_street_names = {street_names}
+                else:
+                    first_street_names = set(street_names)
                 if radian_street_segment_id not in output_trench_corners:
                     output_trench_corners[radian_street_segment_id] = set()
             last_radian = radian
             last_street_id = radian_street_segment_id
+            if isinstance(street_names, str):
+                last_street_names = {street_names}
+            else:
+                last_street_names = set(street_names)
 
         # Now all we have left if to create a trench corner between the last vector and the first vector
         if len(sorted_vs) > 1:
@@ -436,6 +460,7 @@ def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[Tr
                                                                     v_for_edge=node_id,
                                                                     name=last_street_id,
                                                                     length=2*distance_from_center_of_road,
+                                                                    street_names=last_street_names,
                                                                     trench_crossing=True
                                                                    )
                                                             )
@@ -446,6 +471,7 @@ def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[Tr
                                                                     v_for_edge=first_node_id,
                                                                     name=first_street_id,
                                                                     length=2*distance_from_center_of_road,
+                                                                    street_names=first_street_names,
                                                                     trench_crossing=True
                                                                     )
                                                             )
@@ -478,6 +504,7 @@ def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[Tr
                                                                 v_for_edge=node2['node_for_adding'],
                                                                 name=first_street_id,
                                                                 length=node_distance(node1, node2),
+                                                                street_names=first_street_names,
                                                                 trench_crossing=True
                                                                 ),
                                                          )
@@ -691,9 +718,14 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     for trench_candidate in new_pp:
         # (None, None) pairs were marked as invalid trenches above
         if trench_candidate[0] is not None:
+            if isinstance(trench_candidate[2], str):
+                street_names = {trench_candidate[2]}
+            else:
+                street_names = set(trench_candidate[2])
             trenches.append(Trench(u_for_edge=trench_candidate[0]['node_for_adding'],
                                    v_for_edge=trench_candidate[1]['node_for_adding'],
                                    name=f"trench {trench_candidate[2]}",
+                                   street_names=street_names,
                                    length=node_distance(trench_candidate[0], trench_candidate[1])))
 
     # Add the curved trenches to the network
@@ -719,7 +751,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
         street_trenches[street_name] = dict()
         for i in range(0, len(trenches)):
             trench = trenches[i]
-            if str(street_name) in trench['name']:
+            if street_name in trench.street_names:
                 street_trenches[street_name][i] = trench
 
     class Trench_info:
@@ -737,6 +769,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
         def __gt__(self, other):
             return node_distance(other.new_v_node, other.corner_u) > node_distance(self.new_v_node, self.corner_u)
 
+    #[trench_index, [Trench_Info]]
     building_by_closest_trench: Dict[int, List[Trench_info]] = dict()
     for _, building in building_gdf.iterrows():
         closest_trench_info = {}
@@ -799,23 +832,25 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
             building_by_closest_trench[trench_index].append(Trench_info(**closest_trench_info))
 
     node_id = 500000000
-    for trench_index in building_by_closest_trench:
-        linestrings : List[List[Tuple[float,float]]] = list()
+    for trench_index, building_trench_info in building_by_closest_trench.items():
+        linestrings : List[List[Tuple[float, float]]] = list()
         trench = trenches[trench_index]
+        # Sort by new_v_node distance from corner_u
         trench.sort()
         last_node_id = trench['u_for_edge']
         last_shortest_i = 0
-        for closest_trench_info in building_by_closest_trench[trench_index]:
+        closest_trench_info1: Trench_info
+        for closest_trench_info1 in building_trench_info:
             node_id += 1
             new_v_node_id = node_id
-            node_id += 1
-            new_u_node_id = node_id
-            if closest_trench_info['geometry']:
-                trench = trenches[closest_trench_info['clostest_trench']]
+            # node_id += 1
+            # new_u_node_id = node_id
+            if closest_trench_info1.geometry:
                 coords = list(trench['geometry'].coords)
-                t = coords[last_shortest_i:shortest_i]
-                last_shortest_i = shortest_i
+                t = coords[last_shortest_i:closest_trench_info1.segment_index]
+                last_shortest_i = closest_trench_info1.segment_index
                 linestrings.append(t)
+                Trench(last_node_id, new_v_node_id,"",)
             else:
                 trench = trenches[closest_trench_info['clostest_trench']]
                 sub_trench1 = Trench(u_for_edge=last_node_id,
