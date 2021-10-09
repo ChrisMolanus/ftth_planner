@@ -6,7 +6,7 @@ from fibers import FiberNetwork
 
 class DetailedCost:
     def __init__(self, fiber_network: FiberNetwork, cost_parameters: CostParameters):
-        self.fiber_network = fiber_network
+        self.fiber_network: FiberNetwork = fiber_network
         self.cost_parameters = cost_parameters
 
 
