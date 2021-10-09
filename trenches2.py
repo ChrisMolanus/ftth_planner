@@ -314,8 +314,8 @@ def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: Li
             closest_v_for_trench = v_corner
     linestring.append((closest_v_for_trench['x'], closest_v_for_trench['y']))
 
-    return {'u_for_edge': closest_u_for_trench,
-            'v_for_edge': closest_v_for_trench,
+    return {'u_for_edge': closest_u_for_trench['node_for_adding'],
+            'v_for_edge': closest_v_for_trench['node_for_adding'],
             'geometry': LineString(linestring),
             'length': total_road_length,
             'name': f"Curved Trench {street['name']}"}
@@ -707,19 +707,20 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                 trenches.append(crossing)
 
     # Create dictionary of Trench corners by their Node ID
-    street_trenches: Dict[str, Dict[int, Tuple[TrenchCorner, TrenchCorner, Trench]]] = dict()
     corner_by_id: Dict[int, TrenchCorner] = dict()
     for intersection_osmid, corners in trench_corners.items():
         for corner in corners:
             corner_by_id[corner['node_for_adding']] = corner
 
     # Create dictionary of Trenches that are condidates for a street address
+    street_trenches: Dict[str, Dict[int, Trench]] = dict()
+    streets = building_gdf['addr:street'].unique()
     for street_name in streets:
         street_trenches[street_name] = dict()
         for i in range(0, len(trenches)):
             trench = trenches[i]
             if str(street_name) in trench['name']:
-                street_trenches[street_name][i] = (corner_by_id[trench['u_for_edge']], corner_by_id[trench['v_for_edge']], trenches)
+                street_trenches[street_name][i] = trench
 
     class Trench_info:
         def __init__(self, building_centroid_node, new_v_node: dict, closest_trench, geometry, segment_index, corner_u):
@@ -747,31 +748,35 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
         shortest_i = None
         building_centriod_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
         if len(street_trenches[street_name]) > 0:
-            corner_u: TrenchCorner
-            corner_v: TrenchCorner
             clostest_trench = None
-            for trench_index, corner_u, corner_v in street_trenches[street_name].items():
+            for trench_index, trench in street_trenches[street_name].items():
+                if trench_index not in building_by_closest_trench:
+                    building_by_closest_trench[trench_index] = list()
+                corner_u: TrenchCorner = corner_by_id[trench['u_for_edge']]
+                corner_v: TrenchCorner = corner_by_id[trench['v_for_edge']]
                 if 'geometry' not in trenches[trench_index]:
                     #projected, new_distance = point_on_line(corner_u, corner_v, building_centriod_node, return_distance=True)
                     perpendicular_line = get_perpendicular_line(corner_u, corner_v, building_centriod_node)
                     projected = get_intersection_point2(perpendicular_line, (corner_u, corner_v))
                     new_distance = node_distance(projected, building_centriod_node)
                     if new_distance < distance:
-                        new_v_node = {'x': projected[0], 'y': projected[1]}
+                        new_v_node = projected
                         distance = new_distance
                         clostest_trench = trench_index
                         closest_trench_info = {'building_centroid_node': building_centriod_node,
                                                'new_v_node': new_v_node,
                                                'closest_trench': clostest_trench,
                                                'geometry': False,
-                                               'corner_u': corner_u}
+                                               'corner_u': corner_u,
+                                               'segment_index': None}
 
                 else:
                     trench = trenches[trench_index]
                     coords = list(trench['geometry'].coords)
+                    last_node_id = None
                     for semegemnt_index in range(0, len(coords)):
                         sub_x, sub_y = coords[semegemnt_index]
-                        if last_node_id == '':
+                        if last_node_id is None:
                             last_node_id = {'x': sub_x, 'y': sub_y}
                         else:
                             sub_u_node = {'x': sub_x, 'y': sub_y}
@@ -791,7 +796,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                                                        'geometry': True,
                                                        'segment_index': shortest_i,
                                                        'corner_u': corner_u}
-        building_by_closest_trench[trench_index].append(Trench_info(**closest_trench_info))
+            building_by_closest_trench[trench_index].append(Trench_info(**closest_trench_info))
 
     node_id = 500000000
     for trench_index in building_by_closest_trench:
