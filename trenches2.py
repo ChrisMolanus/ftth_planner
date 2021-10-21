@@ -703,7 +703,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
         for trench in trenches:
             if str(street_name) in trench['name']:
                 if 'geometry' not in trench:
-                    for intersection_osmid, corners in trench_corners.items():
+                    for intersection_osmidR, corners in trench_corners.items():
                         for corner in corners:
                             if corner['node_for_adding'] == trench['u_for_edge']:
                                 u_node = corner

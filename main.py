@@ -37,6 +37,6 @@ detailed_cost = DetailedCost(fiber_network, cost_parameters)
 
 detailed_report = get_detailed_report(detailed_cost, g_box, building_gdf)
 
-#detailed_report.plot.show()
+detailed_report.plot.show()
 
 # TODO: convert detailed_report to PDF
