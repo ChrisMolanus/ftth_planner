@@ -23,7 +23,7 @@ def point_distance_from_line(line: Tuple[dict, dict], point: dict) -> float:
     :param point: The point
     :return: The distance between the point and the line
     """
-    return (((point['x'] - line[0]['x'])*(line[1]['y']-line[0]['y']))
+    return (((point['x'] - line[0]['x']) * (line[1]['y'] - line[0]['y']))
             - ((point['y'] - line[0]['y']) * (line[1]['x'] - line[0]['x'])))
 
 
@@ -46,13 +46,13 @@ def angle(vector1: Tuple[float, float], vector2: Tuple[float, float]) -> float:
     """
     x1, y1 = vector1
     x2, y2 = vector2
-    inner_product = x1*x2 + y1*y2
+    inner_product = x1 * x2 + y1 * y2
     len1 = math.hypot(x1, y1)
     len2 = math.hypot(x2, y2)
     if y2 < y1:
-        return math.pi - math.acos(inner_product/(len1*len2)) + math.pi
+        return math.pi - math.acos(inner_product / (len1 * len2)) + math.pi
     else:
-        return math.acos(inner_product/(len1*len2))
+        return math.acos(inner_product / (len1 * len2))
 
 
 def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, float]:
@@ -68,7 +68,7 @@ def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, 
     return x, y
 
 
-def get_perpendicular_line(u_node, v_node, point)->Tuple[dict, dict]:
+def get_perpendicular_line(u_node, v_node, point) -> Tuple[dict, dict]:
     dx = u_node['x'] - v_node['x']
     dy = u_node['y'] - v_node['y']
 
@@ -81,7 +81,7 @@ def get_perpendicular_line(u_node, v_node, point)->Tuple[dict, dict]:
     dx1 = -1 * dy
     dy1 = dx
 
-    return ({'x':point['x'], 'y':point['y']}, {'x':point['x']*dx1, 'y':point['y']*dy1})
+    return {'x': point['x'], 'y': point['y']}, {'x': point['x'] * dx1, 'y': point['y'] * dy1}
 
 
 def point_on_line(u, v, c, return_distance=False):
@@ -94,7 +94,7 @@ def point_on_line(u, v, c, return_distance=False):
     #     print('p3 does not project onto p1-p2 line segment')
 
     # if you need the point to project on line segment between p1 and p2 or closest point of the line segment
-    #t = max(0, min(1, np.sum((p3 - p1) * (p2 - p1)) / l2))
+    # t = max(0, min(1, np.sum((p3 - p1) * (p2 - p1)) / l2))
 
     projection = p1 + t * (p2 - p1)
 
@@ -109,7 +109,6 @@ def point_on_line(u, v, c, return_distance=False):
         return projection, dist
     else:
         return projection
-
 
 
 class TrenchCorner(dict):
@@ -144,7 +143,7 @@ class TrenchCorner(dict):
 
 class Trench(dict):
     def __init__(self, u_for_edge: int, v_for_edge: int, name: str, length: float, trench: bool = True,
-                 trench_crossing: bool = False, geometry: LineString = None,  *args, **kw):
+                 trench_crossing: bool = False, geometry: LineString = None, *args, **kw):
         super(Trench, self).__init__(*args, **kw)
         self['u_for_edge'] = u_for_edge
         self['v_for_edge'] = v_for_edge
@@ -158,7 +157,7 @@ class Trench(dict):
         else:
             self.has_geometry = False
 
-    def has_geometry(self)-> bool:
+    def has_geometry(self) -> bool:
         return self.has_geometry
 
 
@@ -205,8 +204,8 @@ def get_parallel_line_points(u_node: dict, v_node: dict, vector_distance: float,
     return new_u_node, new_v_node
 
 
-def get_intersection_point2(line1: Tuple[dict,dict],
-                           line2: Tuple[dict, dict]) -> dict:
+def get_intersection_point2(line1: Tuple[dict, dict],
+                            line2: Tuple[dict, dict]) -> dict:
     """
     Returns the point where the two lines intersect
     :param line1: Fist line
@@ -216,7 +215,8 @@ def get_intersection_point2(line1: Tuple[dict,dict],
     l1 = ((line1[0]['x'], line1[0]['y']), (line1[1]['x'], line1[1]['y']))
     l2 = ((line2[0]['x'], line2[0]['y']), (line2[1]['x'], line2[1]['y']))
     p = get_intersection_point(l1, l2)
-    return {'x':p[0], 'y':p[1]}
+    return {'x': p[0], 'y': p[1]}
+
 
 def get_intersection_point(line1: Tuple[Tuple[float, float], Tuple[float, float]],
                            line2: Tuple[Tuple[float, float], Tuple[float, float]]) -> Tuple[float, float]:
@@ -337,7 +337,7 @@ def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[Tr
             street = network.get_edge_data(u, v)[0]
             if 'geometry' not in street:
                 # Its' a simple straight line so that the other intersection as point ot form the vector
-                radian = angle((1.0, 0.0), (neighbor['x']-current_node['x'], neighbor['y']-current_node['y']))
+                radian = angle((1.0, 0.0), (neighbor['x'] - current_node['x'], neighbor['y'] - current_node['y']))
             else:
                 # Street is not a simple line so we have to look at the geometry
                 l: List[Tuple[float, float]] = list(street['geometry'].coords)
@@ -479,11 +479,11 @@ def is_between(a: Tuple[float, float], b: Tuple[float, float], c: Tuple[float, f
     if abs(crossproduct) > 0.00000005:
         return False
 
-    dotproduct = (c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1])*(b[1] - a[1])
+    dotproduct = (c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1]) * (b[1] - a[1])
     if dotproduct < 0:
         return False
 
-    squaredlengthba = (b[0] - a[0])*(b[0] - a[0]) + (b[1] - a[1])*(b[1] - a[1])
+    squaredlengthba = (b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1])
     if dotproduct > squaredlengthba:
         return False
 
@@ -531,7 +531,6 @@ class TrenchNetwork:
 
 def get_trench_network(road_network: networkx.MultiDiGraph,
                        building_gdf: geopandas.GeoDataFrame) -> TrenchNetwork:
-
     trench_corners, road_crossing = get_trench_corners(road_network)
 
     new_pp = list()
@@ -733,7 +732,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                                               v_for_edge=v_id,
                                               name=f"trench {u_id}")
                 else:
-                    for intersection_osmid, corners in trench_corners.items():
+                    for intersection_osmidR, corners in trench_corners.items():
                         for corner in corners:
                             if corner['node_for_adding'] == trench['u_for_edge']['node_for_adding']:
                                 u_node = corner
@@ -741,7 +740,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                                 v_node = corner
                     #projection on curved road
                     last_node = ''
-                    #for sub_x, sub_y in trench['geometry'].coords:
+                    # for sub_x, sub_y in trench['geometry'].coords:
                     coords = list(trench['geometry'].coords)
                     shortest_i = None
                     for i in range(0, len(coords)):
@@ -750,7 +749,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                             last_node = {'x': sub_x, 'y': sub_y}
                         else:
                             sub_u_node = {'x': sub_x, 'y': sub_y}
-                            #projected, new_distance = point_on_line(sub_u_node, last_node, new_u_node, return_distance=True)
+                            # projected, new_distance = point_on_line(sub_u_node, last_node, new_u_node, return_distance=True)
                             perpendicular_line = get_perpendicular_line(last_node, sub_u_node, new_u_node)
                             projected = get_intersection_point2(perpendicular_line, (last_node, sub_u_node))
                             new_distance = node_distance(projected, new_u_node)
@@ -762,8 +761,12 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                     if shortest_i is not None:
                         # trench_corners[v_id] = new_v_node
                         coords.insert(shortest_i, (new_v_node['x'], new_v_node['y']))
-                        trench['geometry'] = LineString(coords)
+                        # trench['geometry'] = LineString(coords)
 
-
+                        road_network.add_node(u_id, **new_u_node)
+                        road_network.add_node(v_id, **new_v_node)
+                        road_network.add_edge(u_for_edge=u_id,
+                                              v_for_edge=v_id,
+                                              name=f"trench {u_id}")
 
     return TrenchNetwork(trench_corners, trenches), road_network
