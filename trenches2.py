@@ -764,10 +764,19 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
             self.corner_u = corner_u
 
         def __eq__(self, other):
-            return node_distance(other.new_v_node, other.corner_u) == node_distance(self.new_v_node, self.corner_u)
+            if self.geometry != other.geometry:
+                print("Warning comparing trenches of different types (curved vs straight)")
+                return False
+            if self.geometry is not None and other.geometry is not None:
+                return self.segment_index == other.segment_index
+            else:
+                return node_distance(other.new_v_node, other.corner_u) == node_distance(self.new_v_node, self.corner_u)
 
         def __gt__(self, other):
-            return node_distance(other.new_v_node, other.corner_u) > node_distance(self.new_v_node, self.corner_u)
+            if self.geometry is not None and other.geometry is not None:
+                return self.segment_index > other.segment_index
+            else:
+                return node_distance(other.new_v_node, other.corner_u) > node_distance(self.new_v_node, self.corner_u)
 
     #[trench_index, [Trench_Info]]
     building_by_closest_trench: Dict[int, List[Trench_info]] = dict()
