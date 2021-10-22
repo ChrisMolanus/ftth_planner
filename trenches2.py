@@ -82,7 +82,7 @@ def get_perpendicular_line(u_node, v_node, point)->Tuple[dict, dict]:
     dx1 = -1 * dy
     dy1 = dx
 
-    return ({'x':point['x'], 'y':point['y']}, {'x':point['x']*dx1, 'y':point['y']*dy1})
+    return ({'x':point['x'], 'y':point['y']}, {'x':point['x']+dx1, 'y':point['y']+dy1})
 
 
 def point_on_line(u, v, c, return_distance=False):
