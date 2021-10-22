@@ -79,8 +79,8 @@ def get_perpendicular_line(u_node, v_node, point)->Tuple[dict, dict]:
     t = distance_from_center_of_road / road_length
 
     # Perpendicular line
-    dx1 = -1 * dy
-    dy1 = dx
+    dx1 = -1 * dx
+    dy1 = dy
 
     return ({'x':point['x'], 'y':point['y']}, {'x':point['x']+dx1, 'y':point['y']+dy1})
 
