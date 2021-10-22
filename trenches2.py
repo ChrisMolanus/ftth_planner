@@ -780,7 +780,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
 
     #[trench_index, [Trench_Info]]
     building_by_closest_trench: Dict[int, List[Trench_info]] = dict()
-    for _, building in building_gdf.iterrows():
+    for building_index, building in building_gdf.iterrows():
         closest_trench_info = {}
         street_name = building['addr:street']
         centroid = building['geometry'].centroid
@@ -788,7 +788,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
         new_u_node_id = None
         distance = float('inf')
         shortest_i = None
-        building_centriod_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
+        building_centriod_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0], 'building_index': building_index}
         if len(street_trenches[street_name]) > 0:
             clostest_trench = None
             for trench_index, trench in street_trenches[street_name].items():
