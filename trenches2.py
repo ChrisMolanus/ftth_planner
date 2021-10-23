@@ -787,7 +787,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     #[trench_index, [Trench_Info]]
     building_by_closest_trench: Dict[int, List[Trench_info]] = dict()
     for building_index, building in building_gdf.iterrows():
-        closest_trench_info = {}
+        closest_trench_info = None
         street_name = building['addr:street']
         centroid = building['geometry'].centroid
         new_v_node_id = None
