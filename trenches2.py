@@ -512,6 +512,12 @@ def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[Tr
     return output_trench_corners, output_road_crossing
 
 
+def is_between2(a: Dict[str, Any], b: Dict[str, Any], c: Dict[str, Any]) -> bool:
+    a1 = (a["x"], a["y"])
+    b1 = (b["x"], b["y"])
+    c1 = (c["x"], c["y"])
+    return is_between(a1, b1, c1)
+
 def is_between(a: Tuple[float, float], b: Tuple[float, float], c: Tuple[float, float]) -> bool:
     """
     Is point c between points a and b
@@ -800,17 +806,18 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                     #projected, new_distance = point_on_line(corner_u, corner_v, building_centriod_node, return_distance=True)
                     perpendicular_line = get_perpendicular_line(corner_u, corner_v, building_centriod_node)
                     projected = get_intersection_point2(perpendicular_line, (corner_u, corner_v))
-                    new_distance = node_distance(projected, building_centriod_node)
-                    if new_distance < distance:
-                        new_v_node = projected
-                        distance = new_distance
-                        clostest_trench = trench_index
-                        closest_trench_info = {'building_centroid_node': building_centriod_node,
-                                               'new_v_node': new_v_node,
-                                               'closest_trench': clostest_trench,
-                                               'geometry': False,
-                                               'corner_u': corner_u,
-                                               'segment_index': None}
+                    if is_between2(last_node, sub_u_node, projected):
+                        new_distance = node_distance(projected, building_centriod_node)
+                        if new_distance < distance:
+                            new_v_node = projected
+                            distance = new_distance
+                            clostest_trench = trench_index
+                            closest_trench_info = {'building_centroid_node': building_centriod_node,
+                                                   'new_v_node': new_v_node,
+                                                   'closest_trench': clostest_trench,
+                                                   'geometry': False,
+                                                   'corner_u': corner_u,
+                                                   'segment_index': None}
 
                 else:
                     trench = trenches[trench_index]
@@ -823,22 +830,24 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                         else:
                             sub_u_node = {'x': sub_x, 'y': sub_y}
                             #projected, new_distance = point_on_line(sub_u_node, last_node, new_u_node, return_distance=True)
-                            perpendicular_line = get_perpendicular_line(last_node_id, sub_u_node, building_centriod_node)
-                            projected = get_intersection_point2(perpendicular_line, (last_node_id, sub_u_node))
-                            new_distance = node_distance(projected, building_centriod_node)
-                            last_node_id = sub_u_node
-                            if new_distance < distance:
-                                new_v_node = projected
-                                distance = new_distance
-                                shortest_i = semegemnt_index
-                                clostest_trench = trench_index
-                                closest_trench_info = {'building_centroid_node': building_centriod_node,
-                                                       'new_v_node': new_v_node,
-                                                       'closest_trench': clostest_trench,
-                                                       'geometry': True,
-                                                       'segment_index': shortest_i,
-                                                       'corner_u': corner_u}
-            building_by_closest_trench[trench_index].append(Trench_info(**closest_trench_info))
+                            perpendicular_line = get_perpendicular_line(last_node, sub_u_node, building_centriod_node)
+                            projected = get_intersection_point2(perpendicular_line, (last_node, sub_u_node))
+                            if is_between2(last_node, sub_u_node, projected):
+                                new_distance = node_distance(projected, building_centriod_node)
+                                last_node = sub_u_node
+                                if new_distance < distance:
+                                    new_v_node = projected
+                                    distance = new_distance
+                                    shortest_i = semegemnt_index
+                                    clostest_trench = trench_index
+                                    closest_trench_info = {'building_centroid_node': building_centriod_node,
+                                                           'new_v_node': new_v_node,
+                                                           'closest_trench': clostest_trench,
+                                                           'geometry': True,
+                                                           'segment_index': shortest_i,
+                                                           'corner_u': corner_u}
+            if closest_trench_info is not None:
+                building_by_closest_trench[trench_index].append(Trench_info(**closest_trench_info))
 
     node_id = 500000000
     for trench_index, building_trench_info in building_by_closest_trench.items():
