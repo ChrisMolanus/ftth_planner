@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple, Set, Any
 
 import geopandas
 import networkx
@@ -779,7 +779,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                 return node_distance(other.new_v_node, other.corner_u) == node_distance(self.new_v_node, self.corner_u)
 
         def __gt__(self, other):
-            if self.geometry is not None and other.geometry is not None:
+            if self.geometry and other.geometry:
                 return self.segment_index > other.segment_index
             else:
                 return node_distance(other.new_v_node, other.corner_u) > node_distance(self.new_v_node, self.corner_u)
