@@ -822,11 +822,11 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                 else:
                     trench = trenches[trench_index]
                     coords = list(trench['geometry'].coords)
-                    last_node_id = None
+                    last_node = None
                     for semegemnt_index in range(0, len(coords)):
                         sub_x, sub_y = coords[semegemnt_index]
-                        if last_node_id is None:
-                            last_node_id = {'x': sub_x, 'y': sub_y}
+                        if last_node is None:
+                            last_node = {'x': sub_x, 'y': sub_y}
                         else:
                             sub_u_node = {'x': sub_x, 'y': sub_y}
                             #projected, new_distance = point_on_line(sub_u_node, last_node, new_u_node, return_distance=True)
@@ -852,7 +852,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     node_id = 500000000
     for trench_index, building_trench_info in building_by_closest_trench.items():
         last_shortest_i = 0
-        last_node_id = trenches[trench_index]['u_for_edge']
+        last_node = trenches[trench_index]['u_for_edge']
         building_trench_info.sort()
         for closest_trench_info1 in building_trench_info:
             node_id += 1
@@ -886,7 +886,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                 last_shortest_i = closest_trench_info1.segment_index
                 if len(t) > 1:
                     lineString = LineString(t)
-                    sub_trench = Trench(last_node_id, new_v_node_id, "", 0, trench.street_names, True, False, lineString)
+                    sub_trench = Trench(last_node, new_v_node_id, "", 0, trench.street_names, True, False, lineString)
                     trenches.append(sub_trench)
                 building_trench = Trench(new_v_node_id, building_node_id, "House Trench", 0, trench.street_names, True, False, None, house_trench=True)
                 trenches.append(building_trench)
