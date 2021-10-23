@@ -806,7 +806,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                     #projected, new_distance = point_on_line(corner_u, corner_v, building_centriod_node, return_distance=True)
                     perpendicular_line = get_perpendicular_line(corner_u, corner_v, building_centriod_node)
                     projected = get_intersection_point2(perpendicular_line, (corner_u, corner_v))
-                    if is_between2(last_node, sub_u_node, projected):
+                    if is_between2(corner_u, corner_v, projected):
                         new_distance = node_distance(projected, building_centriod_node)
                         if new_distance < distance:
                             new_v_node = projected
