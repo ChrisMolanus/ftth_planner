@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import Dict, List, Tuple, Set, Any
 
 import geopandas
@@ -9,8 +8,6 @@ import itertools
 
 import matplotlib.pyplot as plt
 import math
-
-from shapely.geometry import Point, LineString, point
 
 from shapely.geometry import LineString
 
@@ -69,20 +66,15 @@ def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, 
     return x, y
 
 
-def get_perpendicular_line(u_node, v_node, point)->Tuple[dict, dict]:
+def get_perpendicular_line(u_node: dict, v_node: dict, ref_point: dict) -> Tuple[dict, dict]:
     dx = u_node['x'] - v_node['x']
     dy = u_node['y'] - v_node['y']
-
-    road_length = math.sqrt(dx ** 2 + dy ** 2)
-    if road_length == 0:
-        road_length = 0.00001
-    t = distance_from_center_of_road / road_length
 
     # Perpendicular line
     dx1 = -1 * dy
     dy1 = dx
 
-    return ({'x':point['x'], 'y':point['y']}, {'x':point['x']+dx1, 'y':point['y']+dy1})
+    return {'x': ref_point['x'], 'y': ref_point['y']}, {'x': ref_point['x'] + dx1, 'y': ref_point['y'] + dy1}
 
 
 def point_on_line(u, v, c, return_distance=False):
@@ -91,26 +83,14 @@ def point_on_line(u, v, c, return_distance=False):
     p3 = np.array([c['x'], c['y']])
     l2 = np.sum((p1 - p2) ** 2)
     t = np.sum((p3 - p1) * (p2 - p1)) / l2
-    # if t > 1 or t < 0:
-    #     print('p3 does not project onto p1-p2 line segment')
-
-    # if you need the point to project on line segment between p1 and p2 or closest point of the line segment
-    #t = max(0, min(1, np.sum((p3 - p1) * (p2 - p1)) / l2))
 
     projection = p1 + t * (p2 - p1)
 
-    # a = np.array([u['x'], u['y']])
-    # b = np.array([v['x'], v['y']])
-    # p = np.array([c['x'], c['y']])
-    # ap = p - a
-    # ab = b - a
-    # result = a + np.dot(ap, ab) / np.dot(ab, ab) * ab
     dist = np.sum((p3 - projection) ** 2)
     if return_distance:
         return projection, dist
     else:
         return projection
-
 
 
 class TrenchCorner(dict):
@@ -160,7 +140,7 @@ class Trench(dict):
         else:
             self.has_geometry = False
 
-    def has_geometry(self)-> bool:
+    def has_geometry(self) -> bool:
         return self.has_geometry
 
     def __str__(self):
@@ -216,8 +196,8 @@ def get_parallel_line_points(u_node: dict, v_node: dict, vector_distance: float,
     return new_u_node, new_v_node
 
 
-def get_intersection_point2(line1: Tuple[dict,dict],
-                           line2: Tuple[dict, dict]) -> dict:
+def get_intersection_point2(line1: Tuple[dict, dict],
+                            line2: Tuple[dict, dict]) -> dict:
     """
     Returns the point where the two lines intersect
     :param line1: Fist line
@@ -227,7 +207,8 @@ def get_intersection_point2(line1: Tuple[dict,dict],
     l1 = ((line1[0]['x'], line1[0]['y']), (line1[1]['x'], line1[1]['y']))
     l2 = ((line2[0]['x'], line2[0]['y']), (line2[1]['x'], line2[1]['y']))
     p = get_intersection_point(l1, l2)
-    return {'x':p[0], 'y':p[1]}
+    return {'x': p[0], 'y': p[1]}
+
 
 def get_intersection_point(line1: Tuple[Tuple[float, float], Tuple[float, float]],
                            line2: Tuple[Tuple[float, float], Tuple[float, float]]) -> Tuple[float, float]:
@@ -256,13 +237,13 @@ def get_intersection_point(line1: Tuple[Tuple[float, float], Tuple[float, float]
 
 
 def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: List[TrenchCorner],
-                          street, distance_from_center_of_road: float, side_id: int) -> dict:
+                          street, ref_distance_from_center_of_road: float, side_id: int) -> dict:
     """
     Returns a curved trench parallel to the road on one side of the road.
     :param u_side_corners: A set of trench corners around the first point in geometry of this road.
     :param v_side_corners: A set of trench corners around the last point in geometry of this road.
     :param street: The data of the street
-    :param distance_from_center_of_road: The distance the trench should be from the road
+    :param ref_distance_from_center_of_road: The distance the trench should be from the road
     :param side_id: The side of the road the trench should be on 0 or 1
     :return: A curved trench parallel to the road on one side of the road.
     """
@@ -277,7 +258,7 @@ def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: Li
             new_u_node, new_v_node = get_parallel_line_points({'x': last_road_point[0], 'y': last_road_point[1],
                                                                'street_count': 1},
                                                               {'x': sub_x, 'y': sub_y, 'street_count': 1},
-                                                              distance_from_center_of_road, side_id)
+                                                              ref_distance_from_center_of_road, side_id)
 
             if last_line is not None:
                 # Not first line
@@ -458,11 +439,11 @@ def get_trench_corners(network: networkx.MultiDiGraph) -> Tuple[Dict[str, Set[Tr
                 if last_street_id not in output_road_crossing:
                     output_road_crossing[last_street_id] = list()
                 output_road_crossing[last_street_id].append(Trench(u_for_edge=last_node_id,
-                                                                    v_for_edge=node_id,
-                                                                    name=last_street_id,
-                                                                    length=2*distance_from_center_of_road,
-                                                                    street_names=last_street_names,
-                                                                    trench_crossing=True
+                                                                   v_for_edge=node_id,
+                                                                   name=last_street_id,
+                                                                   length=2*distance_from_center_of_road,
+                                                                   street_names=last_street_names,
+                                                                   trench_crossing=True
                                                                    )
                                                             )
 
@@ -518,6 +499,7 @@ def is_between2(a: Dict[str, Any], b: Dict[str, Any], c: Dict[str, Any]) -> bool
     b1 = (b["x"], b["y"])
     c1 = (c["x"], c["y"])
     return is_between(a1, b1, c1)
+
 
 def is_between(a: Tuple[float, float], b: Tuple[float, float], c: Tuple[float, float]) -> bool:
     """
@@ -762,13 +744,14 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                 street_trenches[street_name][i] = trench
 
     class Trench_info:
-        def __init__(self, building_centroid_node, new_v_node: dict, closest_trench, geometry: bool, segment_index, corner_u):
+        def __init__(self, building_centroid_node, ref_new_v_node: dict, closest_trench, geometry: bool, segment_index,
+                     ref_corner_u):
             self.building_centroid_node = building_centroid_node
-            self.new_v_node = new_v_node
+            self.new_v_node = ref_new_v_node
             self.closest_trench = closest_trench
             self.geometry = geometry
             self.segment_index = segment_index
-            self.corner_u = corner_u
+            self.corner_u = ref_corner_u
 
         def __eq__(self, other):
             if self.geometry != other.geometry:
@@ -830,7 +813,6 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                             last_node = {'x': sub_x, 'y': sub_y}
                         else:
                             sub_u_node = {'x': sub_x, 'y': sub_y}
-                            #projected, new_distance = point_on_line(sub_u_node, last_node, new_u_node, return_distance=True)
                             perpendicular_line = get_perpendicular_line(last_node, sub_u_node, building_centriod_node)
                             projected = get_intersection_point2(perpendicular_line, (last_node, sub_u_node))
                             if is_between2(last_node, sub_u_node, projected):
