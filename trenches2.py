@@ -172,6 +172,7 @@ class Trench(dict):
         else:
             return "Road crossing Trench " + self['name']
 
+
 def get_parallel_line_points(u_node: dict, v_node: dict, vector_distance: float, side_id: int) -> Tuple[dict, dict]:
     """
     Returns a vector parallel to the vector (u_node, v_node) on one side of the vector.
