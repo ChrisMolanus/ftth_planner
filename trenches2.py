@@ -761,7 +761,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                 street_trenches[street_name][i] = trench
 
     class Trench_info:
-        def __init__(self, building_centroid_node, new_v_node: dict, closest_trench, geometry, segment_index, corner_u):
+        def __init__(self, building_centroid_node, new_v_node: dict, closest_trench, geometry: bool, segment_index, corner_u):
             self.building_centroid_node = building_centroid_node
             self.new_v_node = new_v_node
             self.closest_trench = closest_trench
@@ -773,7 +773,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
             if self.geometry != other.geometry:
                 print("Warning comparing trenches of different types (curved vs straight)")
                 return False
-            if self.geometry is not None and other.geometry is not None:
+            if self.geometry and other.geometry:
                 return self.segment_index == other.segment_index
             else:
                 return node_distance(other.new_v_node, other.corner_u) == node_distance(self.new_v_node, self.corner_u)
