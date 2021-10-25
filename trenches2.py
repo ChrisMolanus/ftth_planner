@@ -1076,7 +1076,10 @@ if __name__ == "__main__":
         osmid += 1
         g_box.add_edge(**trench, key=1, osmid=osmid)
 
-    ec = ['y' if 'highway' in d else 'r' for _, _, _, d in g_box.edges(keys=True, data=True)]
+    ec = ['yellow' if 'highway' in d else
+          "grey" if "trench_crossing" in d and d["trench_crossing"]else
+          "blue" if "house_trench" in d else
+          'red' for _, _, _, d in g_box.edges(keys=True, data=True)]
     fig, ax = ox.plot_graph(g_box, bgcolor='white', edge_color=ec,
                             node_size=0, edge_linewidth=0.5,
                             show=False, close=False)
