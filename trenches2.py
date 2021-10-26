@@ -797,10 +797,10 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                             distance = new_distance
                             clostest_trench = trench_index
                             closest_trench_info = {'building_centroid_node': building_centriod_node,
-                                                   'new_v_node': new_v_node,
+                                                   'ref_new_v_node': new_v_node,
                                                    'closest_trench': clostest_trench,
                                                    'geometry': False,
-                                                   'corner_u': corner_u,
+                                                   'ref_corner_u': corner_u,
                                                    'segment_index': None}
 
                 else:
@@ -824,11 +824,11 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                                     shortest_i = semegemnt_index
                                     clostest_trench = trench_index
                                     closest_trench_info = {'building_centroid_node': building_centriod_node,
-                                                           'new_v_node': new_v_node,
+                                                           'ref_new_v_node': new_v_node,
                                                            'closest_trench': clostest_trench,
                                                            'geometry': True,
                                                            'segment_index': shortest_i,
-                                                           'corner_u': corner_u}
+                                                           'ref_corner_u': corner_u}
             if closest_trench_info is not None:
                 building_by_closest_trench[trench_index].append(Trench_info(**closest_trench_info))
 
