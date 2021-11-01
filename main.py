@@ -30,6 +30,8 @@ g_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48386, 4.49521,
                            truncate_by_edge=True)
 building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tags={'building': True})
 trench_network = get_trench_network(g_box, building_gdf)
+# import pickle
+# pickle.dump(trench_network, open("trench_network.p", "wb"))
 
 # TODO: make separate network for trenches since fiber planning only needs that network and not the roads
 

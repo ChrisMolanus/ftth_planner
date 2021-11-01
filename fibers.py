@@ -43,3 +43,10 @@ class FiberNetwork:
 
 def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParameters) -> FiberNetwork:
     return FiberNetwork()
+
+
+if __name__ == "__main__":
+    import pickle
+    trench_network = pickle.load(open("trench_network.p", "rb"))
+    cost_parameters = CostParameters()
+    get_fiber_network(get_fiber_network, cost_parameters)
