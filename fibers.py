@@ -4,6 +4,7 @@ from typing import List, Dict
 import networkx
 
 from costs import CostParameters
+from trenches2 import TrenchNetwork
 
 
 class CableType(Enum):
@@ -40,5 +41,5 @@ class FiberNetwork:
         self.equipment: Dict[int, Equipment] = None
 
 
-def get_fiber_network(trench_network: networkx.MultiDiGraph, cost_parameters: CostParameters) -> FiberNetwork:
+def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParameters) -> FiberNetwork:
     return FiberNetwork()

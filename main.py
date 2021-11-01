@@ -46,7 +46,7 @@ for trench in trench_network.trenches:
     g_box.add_edge(**trench, key=1, osmid=osmid)
 
 cost_parameters = CostParameters()
-fiber_network = get_fiber_network(g_box, cost_parameters)
+fiber_network = get_fiber_network(trench_network, cost_parameters)
 
 detailed_cost = DetailedCost(fiber_network, cost_parameters)
 
