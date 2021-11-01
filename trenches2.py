@@ -890,7 +890,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     # for trench_index in trench_indexes_to_remove:
     #     del trenches[trench_index]
 
-    return TrenchNetwork(trench_corners, trenches), road_network
+    return TrenchNetwork(trench_corners, trenches)
 
 
 if __name__ == "__main__":
