@@ -893,6 +893,28 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     return TrenchNetwork(trench_corners, trenches)
 
 
+def add_trenches_to_network(trench_network: TrenchNetwork,
+                            road_network: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
+    """
+    Adds the trenches and nodes in the trench_network to an existing OSM Network
+    :param trench_network: The Trench network
+    :param road_network: The OSM street MultiDiGraph
+    :return: A combined MultiDiGraph
+    """
+    # Add trench corner nodes to network
+    for intersection_osmid, corners in trench_network.trenchCorners.items():
+        for corner in corners:
+            # TODO: addes nodes more then ones, but it should be ok since they have the same ID
+            road_network.add_node(**corner)
+
+    # Add the trenches to the network
+    osmid = 8945376
+    for trench in trench_network.trenches:
+        osmid += 1
+        road_network.add_edge(**trench, key=1, osmid=osmid)
+    return road_network
+
+
 if __name__ == "__main__":
     g_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48386, 4.49521,
                                network_type='drive',
@@ -900,19 +922,7 @@ if __name__ == "__main__":
                                retain_all=False,
                                truncate_by_edge=True)
     building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tags={'building': True})
-    trench_network, road_network = get_trench_network(g_box, building_gdf)
-
-    # Add trench corner nodes to network
-    for intersection_osmid, corners in trench_network.trenchCorners.items():
-        for corner in corners:
-            # TODO: addes nodes more then ones, but it should be ok since they have the same ID
-            g_box.add_node(**corner)
-
-    # Add the trenches to the network
-    osmid = 8945376
-    for trench in trench_network.trenches:
-        osmid += 1
-        g_box.add_edge(**trench, key=1, osmid=osmid)
+    trench_network = get_trench_network(g_box, building_gdf)
 
     ec = ['black' if 'highway' in d else
           "grey" if "trench_crossing" in d and d["trench_crossing"]else
