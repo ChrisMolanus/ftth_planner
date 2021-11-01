@@ -50,3 +50,20 @@ if __name__ == "__main__":
     trench_network = pickle.load(open("trench_network.p", "rb"))
     cost_parameters = CostParameters()
     get_fiber_network(get_fiber_network, cost_parameters)
+
+    import pandas as pd
+    import sklearn
+    import numpy as np
+    from sklearn.cluster import KMeans
+
+    building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tags={'building': True})
+    houses_centroids = []
+    for building in building_gdf.iterrows():
+        centroid = building['geometry'].centroid
+        building_centroid_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
+        houses_centroids.append(building_centroid_node)
+    houses_array = np.array(houses_centroids)
+
+    house_clusters = int(round(len(houses_array)/48, 0))
+
+    kmeans = KMeans(n_clusters=house_clusters, random_state=42).fit(houses_array)
