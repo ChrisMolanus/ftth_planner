@@ -45,6 +45,22 @@ class FiberNetwork:
 def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParameters) -> FiberNetwork:
     return FiberNetwork()
 
+ def ckdnearest(gdA, gdB):
+
+        nA = np.array(list(gdA.geometry.apply(lambda x: (x.x, x.y))))
+        nB = np.array(list(gdB.geometry.apply(lambda x: (x.x, x.y))))
+        btree = cKDTree(nB)
+        dist, idx = btree.query(nA, k=1)
+        gdB_nearest = gdB.iloc[idx].drop(columns="geometry").reset_index(drop=True)
+        gdf = pd.concat(
+            [
+                gdA.reset_index(drop=True),
+                gdB_nearest,
+                pd.Series(dist, name='dist')
+            ],
+            axis=1)
+
+        return gdf
 
 if __name__ == "__main__":
     import pickle
@@ -56,7 +72,6 @@ if __name__ == "__main__":
     import pandas as pd
     import sklearn
     import numpy as np
-    from sklearn.cluster import KMeans
     from sklearn.preprocessing import StandardScaler
     import geopandas
     from k_means_constrained import KMeansConstrained
@@ -81,28 +96,6 @@ if __name__ == "__main__":
     streetcabinet_candidates_gdf = geopandas.GeoDataFrame(streetcabinet_candidates_df,
                                                           geometry=geopandas.points_from_xy(streetcabinet_candidates_df.x, streetcabinet_candidates_df.y))
 
-
-    # def ckdnearest(gdA, gdB):
-    #
-    #     nA = np.array(list(gdA.geometry.apply(lambda x: (x.x, x.y))))
-    #     nB = np.array(list(gdB.geometry.apply(lambda x: (x.x, x.y))))
-    #     btree = cKDTree(nB)
-    #     dist, idx = btree.query(nA, k=1)
-    #     gdB_nearest = gdB.iloc[idx].drop(columns="geometry").reset_index(drop=True)
-    #     gdf = pd.concat(
-    #         [
-    #             gdA.reset_index(drop=True),
-    #             gdB_nearest,
-    #             pd.Series(dist, name='dist')
-    #         ],
-    #         axis=1)
-    #
-    #     return gdf
-
-    # centroid clusters
-
-    # ckdnearest(gpd1, gpd2)
-
     for key, building in houses_filter.iterrows():
         centroid = building['geometry'].centroid
         building_centroid_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0], 'street' : building['addr:street']}
@@ -122,6 +115,8 @@ if __name__ == "__main__":
     for i in range(len(kmeans.cluster_centers_)):
         houses_centroids.append({'x': kmeans.cluster_centers_[i][0], 'y': kmeans.cluster_centers_[i][1]})
 
+    #TODO: add the cluster label as a column in the house geodataframe
+
     hs_centroids_df = pd.DataFrame(houses_centroids)
     hs_centroids_gdf = geopandas.GeoDataFrame(hs_centroids_df,
                                               geometry=geopandas.points_from_xy(hs_centroids_df.x, hs_centroids_df.y))
@@ -135,13 +130,6 @@ if __name__ == "__main__":
 
     #TODO: connect houses and street cabinets to trench network, add column per row to add id for trenchCorners
     #TODO: houses dijkstra algorithm to streetcabinets
-
-
-
-    # stratenkast object - pandas?
-
-
-    plt.scatter(x=hs_centroids_df[0], y=hs_centroids_df[1], c='red')
 
 
 
