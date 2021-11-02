@@ -57,6 +57,7 @@ if __name__ == "__main__":
     import numpy as np
     from sklearn.cluster import KMeans
     from sklearn.preprocessing import StandardScaler
+    from k_means_constrained import KMeansConstrained
 
     building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tags={'building': True})
     houses_list = []
@@ -65,27 +66,30 @@ if __name__ == "__main__":
         building_centroid_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0], 'street' : building['addr:street']}
         houses_list.append(building_centroid_node)
 
+    for i in trench_network.trenches:
+        houses_list
+
     houses_df = pd.DataFrame(houses_list)
     houses_dummy = pd.get_dummies(houses_df, columns=['street'])
     houses_dummy.iloc[:,2:] = houses_dummy.iloc[:,2:] / 1000
 
     house_clusters = int(round(len(houses_list)/48, 0))
-    scaler = StandardScaler()
-    kmeans = KMeans(n_clusters=house_clusters, random_state=42)
-    kmeans.fit(scaler.fit_transform(houses_dummy))
-    kmeans.labels_
-    kmeans.cluster_centers_
+    # scaler = StandardScaler()
+    kmeans = KMeansConstrained(n_clusters=house_clusters, size_min=None, size_max=48, init='k-means++', n_init=10, max_iter=300, tol=0.0001,
+                      verbose=False, random_state=None, copy_x=True, n_jobs=1)
+    kmeans.fit(houses_dummy)
 
     houses_centroids = []
     for i in range(len(kmeans.cluster_centers_)):
         houses_centroids.append(kmeans.cluster_centers_[i][:2])
 
-
+    hs_centroids_df = pd.DataFrame(houses_centroids)
 
     #TODO: scaling (GIS package) and plotting on the street
 
     # stratenkast object - pandas?
 
+    plt.scatter(x=hs_centroids_df[0], y=hs_centroids_df[1], c='red')
     plt.scatter(x=houses_dummy.x, y=houses_dummy.y, c=kmeans.labels_)
 
 
