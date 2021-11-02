@@ -830,7 +830,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                                                            'segment_index': shortest_i,
                                                            'ref_corner_u': corner_u}
             if closest_trench_info is not None:
-                building_by_closest_trench[trench_index].append(Trench_info(**closest_trench_info))
+                building_by_closest_trench[closest_trench_info['closest_trench']].append(Trench_info(**closest_trench_info))
 
     node_id = 500000000
     for trench_index, building_trench_info in building_by_closest_trench.items():
@@ -885,10 +885,10 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                 trenches.append(building_trench)
             last_node = new_v_node_id
 
-    # trench_indexes_to_remove = list(building_by_closest_trench.keys())
-    # trench_indexes_to_remove.sort(reverse=True)
-    # for trench_index in trench_indexes_to_remove:
-    #     del trenches[trench_index]
+    trench_indexes_to_remove = list(building_by_closest_trench.keys())
+    trench_indexes_to_remove.sort(reverse=True)
+    for trench_index in trench_indexes_to_remove:
+        del trenches[trench_index]
 
     return TrenchNetwork(trench_corners, trenches)
 
