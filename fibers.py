@@ -56,6 +56,7 @@ if __name__ == "__main__":
     import sklearn
     import numpy as np
     from sklearn.cluster import KMeans
+    from sklearn.preprocessing import StandardScaler
 
     building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tags={'building': True})
     houses_list = []
@@ -69,11 +70,17 @@ if __name__ == "__main__":
     houses_dummy.iloc[:,2:] = houses_dummy.iloc[:,2:] / 1000
 
     house_clusters = int(round(len(houses_list)/48, 0))
-
+    scaler = StandardScaler()
     kmeans = KMeans(n_clusters=house_clusters, random_state=42)
-    kmeans.fit(houses_dummy)
+    kmeans.fit(scaler.fit_transform(houses_dummy))
     kmeans.labels_
     kmeans.cluster_centers_
+
+    houses_centroids = []
+    for i in range(len(kmeans.cluster_centers_)):
+        houses_centroids.append(kmeans.cluster_centers_[i][:2])
+
+
 
     #TODO: scaling (GIS package) and plotting on the street
 
