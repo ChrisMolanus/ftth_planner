@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import List, Dict
 
+import matplotlib.pyplot as plt
 import networkx
 
 from costs import CostParameters
@@ -57,13 +58,29 @@ if __name__ == "__main__":
     from sklearn.cluster import KMeans
 
     building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tags={'building': True})
-    houses_centroids = []
-    for building in building_gdf.iterrows():
+    houses_list = []
+    for key, building in building_gdf.iterrows():
         centroid = building['geometry'].centroid
-        building_centroid_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0]}
-        houses_centroids.append(building_centroid_node)
-    houses_array = np.array(houses_centroids)
+        building_centroid_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0], 'street' : building['addr:street']}
+        houses_list.append(building_centroid_node)
 
-    house_clusters = int(round(len(houses_array)/48, 0))
+    houses_df = pd.DataFrame(houses_list)
+    houses_dummy = pd.get_dummies(houses_df, columns=['street'])
+    houses_dummy.iloc[:,2:] = houses_dummy.iloc[:,2:] / 1000
 
-    kmeans = KMeans(n_clusters=house_clusters, random_state=42).fit(houses_array)
+    house_clusters = int(round(len(houses_list)/48, 0))
+
+    kmeans = KMeans(n_clusters=house_clusters, random_state=42)
+    kmeans.fit(houses_dummy)
+    kmeans.labels_
+    kmeans.cluster_centers_
+
+    #TODO: scaling (GIS package) and plotting on the street
+
+    # stratenkast object - pandas?
+
+    plt.scatter(x=houses_dummy.x, y=houses_dummy.y, c=kmeans.labels_)
+
+
+
+
