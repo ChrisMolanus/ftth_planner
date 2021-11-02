@@ -724,7 +724,9 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
 
 
 def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[TrenchInfo]],
-                                   trenches: List[Trench]) -> Tuple[Dict[str, Set[TrenchCorner]], List[Trench], List[int]]:
+                                   trenches: List[Trench],
+                                   trench_corners: Dict[str, Set[TrenchCorner]]
+                                   ) -> Tuple[Dict[str, Set[TrenchCorner]], List[Trench], List[int]]:
     """
     Retrunes the:
     new_trench_corners: The building Nodes and the new road sub-trench Nodes as TrenchCorner
@@ -733,8 +735,16 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
       since we have replaced them with sub-trenches
     :param building_by_closest_trench: The Trench Info dictionary
     :param trenches: The current list of trenches
+    :param trench_corners: The dict of trench corners
     :return: new_trench_corners, new_trenches, trench_indexes_to_remove
     """
+    # TODO: This is duplicate code from get_building_by_closest_trench, we could pass the object or separate methode
+    # Create dictionary of Trench corners by their Node ID
+    corner_by_id: Dict[int, TrenchCorner] = dict()
+    for intersection_osmid, corners in trench_corners.items():
+        for corner in corners:
+            corner_by_id[corner['node_for_adding']] = corner
+
     new_trenches: List[Trench] = list()
     new_trench_corners: Dict[str, Set[TrenchCorner]] = dict()
     node_id = 500000000
@@ -747,7 +757,8 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
             trench_indexes_to_remove.append(trench_index)
             last_shortest_i = 0
             trench = trenches[trench_index]
-            last_node = trench['u_for_edge']
+            last_node_id = trench['u_for_edge']
+            last_node = corner_by_id[last_node_id]
             # Since we are creating the sub-trenches from teh "u" node the the "v" node
             # We have to order the buildings so we chain the sub-trenches correctly
             # The Trench Info object order them selves based on how far they are from the "u" node of the road trench
@@ -789,29 +800,42 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
                     coords = list(trench['geometry'].coords)
                     t = coords[last_shortest_i:closest_trench_info1.segment_index]
                     last_shortest_i = closest_trench_info1.segment_index
+                    trench_length = node_distance(last_node, new_v_node)
                     if len(t) > 1:
                         line_string = LineString(t)
-                        sub_trench = Trench(last_node, new_v_node_id, "", 0, trench.street_names, True, False,
+                        sub_trench = Trench(last_node_id, new_v_node_id, "sub " + trench["name"], trench_length,
+                                            trench.street_names, True, False,
                                             line_string)
                         new_trenches.append(sub_trench)
                     else:
-                        sub_trench = Trench(last_node, new_v_node_id, "", 0, trench.street_names, True, False)
+                        sub_trench = Trench(last_node_id, new_v_node_id, "sub " + trench["name"], trench_length,
+                                            trench.street_names, True, False)
                         new_trenches.append(sub_trench)
-                    building_trench = Trench(new_v_node_id, building_node_id, "House Trench", 0, trench.street_names,
+                    trench_length = node_distance(new_v_node, building_node)
+                    building_trench = Trench(new_v_node_id, building_node_id, "House Trench", trench_length,
+                                             trench.street_names,
                                              True,
                                              False, None, house_trench=True)
                     new_trenches.append(building_trench)
                 else:
-                    sub_trench = Trench(last_node, new_v_node_id, "", 0, trench.street_names, True, False)
+                    trench_length = node_distance(last_node, new_v_node)
+                    sub_trench = Trench(last_node_id, new_v_node_id, "sub " + trench["name"], trench_length,
+                                        trench.street_names, True, False)
                     new_trenches.append(sub_trench)
-                    building_trench = Trench(new_v_node_id, building_node_id, "House Trench", 0, trench.street_names,
+                    trench_length = node_distance(new_v_node, building_node)
+                    building_trench = Trench(new_v_node_id, building_node_id, "House Trench", trench_length,
+                                             trench.street_names,
                                              True,
                                              False, None, house_trench=True)
                     new_trenches.append(building_trench)
-                last_node = new_v_node_id
+                last_node_id = new_v_node_id
+                last_node = new_v_node
 
             # Add the last sub-trench in the chain to connect to the "v" node of the original road trench
-            sub_trench = Trench(last_node, trench["v_for_edge"], "", 0, trench.street_names, True, False)
+            v_node = corner_by_id[trench["v_for_edge"]]
+            trench_length = node_distance(last_node, v_node)
+            sub_trench = Trench(last_node_id, trench["v_for_edge"], "sub " + trench["name"], trench_length,
+                                trench.street_names, True, False)
             new_trenches.append(sub_trench)
     return new_trench_corners, new_trenches, trench_indexes_to_remove
 
@@ -988,7 +1012,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
 
     # Get new road trenches that are connected to the building trenches
     new_trench_corners, new_trenches,  trench_indexes_to_remove = get_sub_trenches_for_buildings(
-        building_by_closest_trench, trenches)
+        building_by_closest_trench, trenches, trench_corners)
 
     # new_trench_corners has different keys than what is currently in trench_corners
     # So we can safely add them to the trench corner dict
