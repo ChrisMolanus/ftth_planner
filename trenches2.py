@@ -560,8 +560,16 @@ def intersection_between_points(l1: List[dict], l2: List[dict]) -> bool:
 
 
 class TrenchNetwork:
-    def __init__(self, trench_corners: Dict[int, TrenchCorner], trenches: List[Trench]):
+    def __init__(self, trench_corners: Dict[str, TrenchCorner], trenches: List[Trench],
+                 building_trenches_lookup: Dict[str, Tuple[int, int]] = None):
+        """
+        A Cognizant FttH Trench Network
+        :param trench_corners: The nodes of the network
+        :param trenches: The edges of the network
+        :param building_trenches_lookup: the building's centroid and trenchcorner of building trench
+        """
         self.trenchCorners = trench_corners
+        self.building_trenches_lookup = building_trenches_lookup
         self.trenches = trenches
 
 
