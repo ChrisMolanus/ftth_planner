@@ -577,13 +577,16 @@ def intersection_between_points(l1: List[dict], l2: List[dict]) -> bool:
 
 
 class TrenchNetwork:
-    def __init__(self, trench_corners: Dict[str, TrenchCorner], trenches: List[Trench]):
+    def __init__(self, trench_corners: Dict[str, TrenchCorner], trenches: List[Trench],
+                 building_trenches_lookup: Dict[str, Tuple[int, int]]):
         """
         A Cognizant FttH Trench Network
         :param trench_corners: The nodes of the network
         :param trenches: The edges of the network
+        :param building_trenches_lookup: the building's centroid and trenchcorner of building trench
         """
         self.trenchCorners = trench_corners
+        self.building_trenches_lookup = building_trenches_lookup
         self.trenches = trenches
 
 
@@ -749,6 +752,9 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
     new_trench_corners: Dict[str, Set[TrenchCorner]] = dict()
     node_id = 500000000
     trench_indexes_to_remove = list()
+    # object used by fiber network to find road trench nodes for street cabinets
+    building_trenches_lookup: Dict[str, Tuple[int, int]] = dict()
+
     # Loop over all the buildings that we found closest trenches for and create the building trenches
     # and the new sub-trenches that should replace the current road trenches
     for trench_index, building_trench_info in building_by_closest_trench.items():
@@ -828,6 +834,8 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
                                              True,
                                              False, None, house_trench=True)
                     new_trenches.append(building_trench)
+                building_trenches_lookup[closest_trench_info1.building_centroid_node['building_index']] = \
+                    (building_node_id, new_v_node_id)
                 last_node_id = new_v_node_id
                 last_node = new_v_node
 
@@ -837,7 +845,7 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
             sub_trench = Trench(last_node_id, trench["v_for_edge"], "sub " + trench["name"], trench_length,
                                 trench.street_names, True, False)
             new_trenches.append(sub_trench)
-    return new_trench_corners, new_trenches, trench_indexes_to_remove
+    return new_trench_corners, new_trenches, trench_indexes_to_remove, building_trenches_lookup
 
 
 def get_trench_network(road_network: networkx.MultiDiGraph,
@@ -1011,7 +1019,8 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     building_by_closest_trench = get_building_by_closest_trench(building_gdf, trench_corners, trenches)
 
     # Get new road trenches that are connected to the building trenches
-    new_trench_corners, new_trenches,  trench_indexes_to_remove = get_sub_trenches_for_buildings(
+    new_trench_corners, new_trenches,  trench_indexes_to_remove, building_trenches_lookup = \
+        get_sub_trenches_for_buildings(
         building_by_closest_trench, trenches, trench_corners)
 
     # new_trench_corners has different keys than what is currently in trench_corners
@@ -1028,7 +1037,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     for trench_index in trench_indexes_to_remove:
         del trenches[trench_index]
 
-    return TrenchNetwork(trench_corners, trenches)
+    return TrenchNetwork(trench_corners, trenches, building_trenches_lookup)
 
 
 def add_trenches_to_network(trench_network: TrenchNetwork,
