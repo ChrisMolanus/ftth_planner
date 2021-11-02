@@ -2,6 +2,10 @@ from enum import Enum
 from typing import List, Dict
 
 import networkx
+import numpy as np
+import pandas as pd
+import geopandas
+import matplotlib.pyplot as plt
 
 from costs import CostParameters
 from trenches2 import TrenchNetwork
@@ -41,7 +45,17 @@ class FiberNetwork:
         self.equipment: Dict[int, Equipment] = None
 
 
-def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParameters) -> FiberNetwork:
+def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParameters, building_gdf: geopandas.GeoDataFrame) -> FiberNetwork:
+    nodes = list()
+    for street_id, corners in trench_network.trenchCorners.items():
+        for corner in corners:
+            corner["street_id"] = street_id
+            nodes.append(corner)
+    nodes_df = pd.DataFrame(nodes)
+    gdf = geopandas.GeoDataFrame(nodes_df, geometry=geopandas.points_from_xy(nodes_df.x, nodes_df.y))
+    buildings = gdf[gdf.building_index.notna()]
+
+
     return FiberNetwork()
 
 
