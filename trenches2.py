@@ -71,6 +71,7 @@ def get_perpendicular_line(u_node: dict, v_node: dict, ref_point: dict) -> Tuple
     dy = u_node['y'] - v_node['y']
 
     # Perpendicular line
+    # TODO: flipping dx and dy is probably not correct but the point looks worse if we correct it
     dx1 = -1 * dy
     dy1 = dx
 
@@ -171,6 +172,7 @@ def get_parallel_line_points(u_node: dict, v_node: dict, vector_distance: float,
     t = vector_distance / road_length
 
     # Perpendicular vector
+    # TODO: flipping dx and dy is probably not correct but the point looks worse if we correct it
     if side_id == 1:
         dx1 = -1 * dy
         dy1 = dx
@@ -875,6 +877,8 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                     if corner['u'] == u or corner['u'] == v:
                         filtered_corners.add(corner)
 
+                # To try and prevent getting trenches that cross streets
+                # we split the trench corners be the side of the road
                 street_sides = [[], []]
                 for corner in filtered_corners:
                     if point_distance_from_line((u_node, v_node), corner) > 0:
@@ -882,6 +886,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                     else:
                         street_sides[0].append(corner)
 
+                # We look for the shortest possible trench on each side of the road separately
                 for side_id in range(0, len(street_sides)):
                     side_corners = street_sides[side_id]
                     # Create possible trench corner pairs but looking for all possible combinations of corner points
@@ -928,6 +933,11 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                     if corner['u'] == v:
                         v_filtered_corners.add(corner)
 
+                # To try and prevent getting trenches that cross streets
+                # we split the trench corners be the side of the road
+                # Since the road is curved we get the side by only considering the segments
+                # of the road that the "u" and "v" nodes are connected to, so teh first and last segment respectively
+                # Sine we are determining side, the direction of the vector is never important ("u" to "v" was chosen)
                 curved_line = list(street['geometry'].coords)
                 u_node = road_network.nodes[u]
                 v_node = road_network.nodes[v]
@@ -952,6 +962,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                     else:
                         v_street_sides[0].append(corner)
 
+                # We look for the shortest possible trench on each side of the road separately
                 for side_id in range(0, 2):
                     u_side_corners = u_street_sides[side_id]
                     v_side_corners = v_street_sides[side_id]
