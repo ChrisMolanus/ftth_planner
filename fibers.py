@@ -83,9 +83,34 @@ if __name__ == "__main__":
     houses_filter = building_gdf.filter(trench_network.building_trenches_lookup.keys(), axis=0)
 
     corner_by_id: Dict[int, TrenchCorner] = dict()
+    trenchCorners: List[TrenchCorner] = list()
     for street_id, corners in trench_network.trenchCorners.items():
         for corner in corners:
             corner_by_id[corner['node_for_adding']] = corner
+            trenchCorners.append(corner)
+
+    street_corner_df = pd.DataFrame(trenchCorners)
+    street_corner_gdf = gpd.GeoDataFrame(street_corner_df, geometry=gpd.points_from_xy(
+                                                              street_corner_df.x,
+                                                              street_corner_df.y))
+    street_corner_gdf.set_index('node_for_adding', inplace=True)
+
+    trenches_df = pd.DataFrame(trench_network.trenches)
+    linestrings = list()
+    for index, row in trenches_df.iterrows():
+        u_id = row["u_for_edge"]
+        v_id = row["v_for_edge"]
+        u_node = corner_by_id[u_id]
+        v_node = corner_by_id[v_id]
+        linestring = LineString([[u_node['x'], u_node['y']], [v_node['x'], v_node['y']]])
+        linestrings.append(linestring)
+    trenches_df["geometry"] = linestrings
+
+
+    trenches_gdf = gpd.GeoDataFrame(trenches_df)
+    trenches_gdf.rename({"u_for_edge": "u", "v_for_edge": "v"}, inplace=True, axis=1)
+    trenches_gdf['key'] = 1
+    trenches_gdf.set_index(['u','v','key'], inplace=True)
 
     cabinetcorners = list()
     for building_index, corner_tuple in trench_network.building_trenches_lookup.items():
@@ -122,6 +147,7 @@ if __name__ == "__main__":
                                               geometry=geopandas.points_from_xy(hs_centroids_df.x, hs_centroids_df.y))
 
     houses_gdf = ckdnearest(streetcabinet_candidates_gdf, hs_centroids_gdf)
+    houses_gdf["cluster_id"] = kmeans.labels_
 
     streetcabinets_gdf = houses_gdf.iloc[:, [-3,-2]].drop_duplicates()
 
