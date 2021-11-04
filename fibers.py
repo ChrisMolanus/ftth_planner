@@ -1,6 +1,8 @@
 from enum import Enum
 from typing import List, Dict
 import pickle
+import os
+os.environ["PROJ_LIB"] = r"C:\Users\823278\Anaconda3\envs\ftth_planner\Library\share"
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -76,7 +78,7 @@ def ckdnearest(gdA, gdB):
 if __name__ == "__main__":
     trench_network: TrenchNetwork = pickle.load(open("trench_network.p", "rb"))
     cost_parameters = CostParameters()
-    get_fiber_network(trench_network, cost_parameters)
+    # get_fiber_network(trench_network, cost_parameters)
 
     g_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48386, 4.49521,
                                network_type='drive',
@@ -118,15 +120,12 @@ if __name__ == "__main__":
     trenches_gdf['key'] = 1
     trenches_gdf.set_index(['u', 'v', 'key'], inplace=True)
 
-    cable_edges = list(dict())
-    for cable in dropcable_edges:
-        for edge in list(cable):
-            print(edge)
-            cable_edges.append({"u": edge[0], "v": edge[1], "drop_cable": True})
-
-    [list(dropcable_edges) for cable in zip(*dropcable_edges)]
-
-    fiber_edges_df = pd.DataFrame(dropcable_edges, columns=['u', 'v'])
+    # cable_edges = list(dict())
+    # for cable in dropcable_edges:
+    #     for edge in list(cable):
+    #         print(edge)
+    #         cable_edges.append({"u": edge[0], "v": edge[1], "drop_cable": True})
+    # fiber_edges_df = pd.DataFrame(dropcable_edges, columns=['u', 'v'])
 
     # create network from nodes and edges geoDataFrames
     G = ox.graph_from_gdfs(street_corner_gdf, trenches_gdf)
@@ -182,17 +181,18 @@ if __name__ == "__main__":
     idx = houses_gdf.groupby('centroid_id', sort=False)["dist"].transform(min) == houses_gdf['dist']
     cabinets_ids = houses_gdf.loc[idx, ['node_for_adding', 'centroid_id']]
 
-    streetcabinets_gdf = houses_gdf.iloc[:, [-3, -2, 1]].drop_duplicates()
+    streetcabinets_gdf = houses_gdf.iloc[:, [-5, -4, 1]].drop_duplicates()
 
-    plt.scatter(x=streetcabinet_candidates_gdf.x, y=streetcabinet_candidates_gdf.y, c=kmeans.labels_)
-    plt.scatter(x=houses_dummy.x, y=houses_dummy.y, c=kmeans.labels_)
-    plt.scatter(x=streetcabinets_gdf.x, y=streetcabinets_gdf.y, c='green')
-    plt.show()
+    # fig, ax = plt.scatter(x=streetcabinet_candidates_gdf.x, y=streetcabinet_candidates_gdf.y, c=kmeans.labels_)
+    # fig, ax = plt.scatter(x=houses_dummy.x, y=houses_dummy.y, c=kmeans.labels_)
+    # fig, ax = plt.scatter(x=streetcabinets_gdf.x, y=streetcabinets_gdf.y, c='green')
+    # plt.show()
 
-    # TODO: connect houses and street cabinets to trench network, add column per row to add id for trenchCorners
-    # create a network that connects the houses nodes to the corresponding street cabinets nodes, using the trenches and trenchcorners
-    ## first create fiber from house to street trench (seperate fiber cable)
-    ### second create shortest path (Dijkstra) from trench_network.trenchCorners that connects house to street cabinet using the trench_network.trenches
+    # Connect houses and street cabinets to trench network, add column per row to add id for trenchCorners
+    #  create a network that connects the houses nodes to the corresponding street cabinets nodes, using the trenches
+    #  and trenchcorners # first create fiber from house to street trench (seperate fiber cable) ## second create
+    #  shortest path (Dijkstra) from trench_network.trenchCorners that connects house to street cabinet using the
+    #  trench_network.trenches
 
     cabinets_ids.set_index('centroid_id', inplace=True)
     cabinet_look_up = cabinets_ids.to_dict(orient="index")
@@ -212,4 +212,4 @@ if __name__ == "__main__":
         dropcable_edges.append(path_edge)
 
     # checking the drop cable routes on the graph
-    fig, ax = ox.plot_graph_routes(G, dropcable_edges, route_color='r', route_linewidth=6)
+    # fig, ax = ox.plot_graph_routes(G, dropcable_edges, route_colors='r', route_linewidths=6)
