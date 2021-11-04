@@ -188,8 +188,8 @@ if __name__ == "__main__":
     plt.scatter(x=houses_dummy.x, y=houses_dummy.y, c=kmeans.labels_)
     plt.scatter(x=streetcabinets_gdf.x, y=streetcabinets_gdf.y, c='green')
     plt.show()
-    # TODO: connect houses and street cabinets to trench network, add column per row to add id for trenchCorners
 
+    # TODO: connect houses and street cabinets to trench network, add column per row to add id for trenchCorners
     # create a network that connects the houses nodes to the corresponding street cabinets nodes, using the trenches and trenchcorners
     ## first create fiber from house to street trench (seperate fiber cable)
     ### second create shortest path (Dijkstra) from trench_network.trenchCorners that connects house to street cabinet using the trench_network.trenches
@@ -201,7 +201,7 @@ if __name__ == "__main__":
         house_node_id = row['building_corner_id']
         cluster_id = row['cluster_id']
         street_cabinet_node_id = cabinet_look_up[cluster_id]['node_for_adding']
-        s_path = nx.algorithms.shortest_paths.shortest_path(G_undirect, source=house_node_id, target=street_cabinet_node_id)
+        s_path = nx.algorithms.shortest_paths.shortest_path(G, source=house_node_id, target=street_cabinet_node_id)
         building_drop_cables.append(
             {"building_corner_id": house_node_id, "cluster_id": cluster_id, "streetcabinet_id": street_cabinet_node_id,
              "shortest_path": s_path})
