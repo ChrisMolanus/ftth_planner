@@ -5,8 +5,9 @@ class CostParameters:
     yaml_tag = u'!CostParameters'
 
     def __init__(self):
-        self.dig_per_km: float = 1
+        self.dig_road_side_trench_per_km: float = 1
         self.dig_per_road_crossing: float = 1
+        self.dig_building_trench_per_km: float = 1
         self.fiber_drop_pair_per_km: float = 1
         self.fiber_96core_per_km: float = 1
         self.fiber_install_per_km: float = 1
@@ -22,6 +23,7 @@ class CostParameters:
         yaml = ruamel.yaml.YAML()
         yaml.register_class(CostParameters)
         yaml.dump(self, sys.stdout)
+
 
 
 @staticmethod

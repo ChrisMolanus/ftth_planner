@@ -4,7 +4,7 @@ from typing import List, Dict
 import networkx
 
 from costs import CostParameters
-from trenches2 import TrenchNetwork
+from trenches2 import TrenchNetwork, Trench
 
 
 class CableType(Enum):
@@ -23,7 +23,15 @@ class EquipmentType(Enum):
 
 class FiberCable:
     def __init__(self, trench_osmids: List[int], length: float, cable_type: CableType):
-        pass
+        """
+        A Fiber cable
+        :param trench_osmids: The ordered list (from root to leaf) of the trench ids that this fiber will be placed in
+        :param length: The total length of the cable, no buffer
+        :param cable_type: The cable type
+        """
+        self.trench_osmids = trench_osmids
+        self.length = length
+        self.cable_type = cable_type
 
 
 class Equipment:
@@ -39,6 +47,9 @@ class FiberNetwork:
         self.fiber_network: networkx.MultiDiGraph = None
         self.fibers: Dict[int, FiberCable] = None
         self.equipment: Dict[int, Equipment] = None
+
+        # Trenches where osm id is the key and the trench is the value
+        self.trenches: Dict[int, Trench] = None
 
 
 def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParameters) -> FiberNetwork:
