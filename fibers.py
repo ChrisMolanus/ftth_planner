@@ -118,11 +118,14 @@ if __name__ == "__main__":
     trenches_gdf['key'] = 1
     trenches_gdf.set_index(['u', 'v', 'key'], inplace=True)
 
-    # check that we can create a network
+    # create network from nodes and edges geoDataFrames
+    # plot the network
     G = ox.graph_from_gdfs(street_corner_unique_gdf, trenches_gdf)
     ox.plot_graph(G)
+    G_undirect = G.to_undirected()
 
-    # find out all the street corners of the houses where streetcabinets connect to
+
+    # find out all the street corners of the houses where streetcabinets need to connect to
     cabinetcorners = list()
     for building_index, corner_tuple in trench_network.building_trenches_lookup.items():
         cabinetcorners.append({'building_corner_id': corner_tuple[0], **corner_by_id[corner_tuple[1]]})
@@ -188,10 +191,11 @@ if __name__ == "__main__":
         house_node_id = row['building_corner_id']
         cluster_id = row['cluster_id']
         street_cabinet_node_id = cabinet_look_up[cluster_id]['node_for_adding']
-        s_path = nx.algorithms.shortest_paths.shortest_path(G, source=house_node_id, target=street_cabinet_node_id)
+        s_path = nx.algorithms.shortest_paths.shortest_path(G_undirect, source=house_node_id, target=street_cabinet_node_id)
         building_drop_cables.append(
             {"building_corner_id": house_node_id, "cluster_id": cluster_id, "streetcabinet_id": street_cabinet_node_id,
              "shortest_path": s_path})
+
 
 
     def gdf_to_nx(gdf_network):
