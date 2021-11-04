@@ -1053,7 +1053,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
         trenches.append(sub_trenches)
 
     # Remove the original road trenches that have been replaced by the sub-trenches
-    trench_indexes_to_remove.sort()
+    trench_indexes_to_remove.sort(reverse=True)
     for trench_index in trench_indexes_to_remove:
         del trenches[trench_index]
 
