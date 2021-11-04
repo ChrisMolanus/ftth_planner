@@ -99,7 +99,7 @@ if __name__ == "__main__":
         street_corner_df.x,
         street_corner_df.y))
     street_corner_gdf.set_index('node_for_adding', inplace=True)
-    street_corner_unique_gdf = street_corner_gdf[~street_corner_gdf.index.duplicated(keep='first')]
+    street_corner_gdf = street_corner_gdf[~street_corner_gdf.index.duplicated(keep='first')]
 
     # create a geoDataFrame containing all the trenches in the network (edges in LineString object)
     trenches_df = pd.DataFrame(trench_network.trenches)
@@ -118,14 +118,24 @@ if __name__ == "__main__":
     trenches_gdf['key'] = 1
     trenches_gdf.set_index(['u', 'v', 'key'], inplace=True)
 
+    cable_edges = list(dict())
+    for cable in dropcable_edges:
+        for edge in list(cable):
+            print(edge)
+            cable_edges.append({"u": edge[0], "v": edge[1], "drop_cable": True})
+
+    [list(dropcable_edges) for cable in zip(*dropcable_edges)]
+
+    fiber_edges_df = pd.DataFrame(dropcable_edges, columns=['u', 'v'])
+
     # create network from nodes and edges geoDataFrames
+    G = ox.graph_from_gdfs(street_corner_gdf, trenches_gdf)
+    # make sure to convert to undirected graph
+    G = G.to_undirected()
     # plot the network
-    G = ox.graph_from_gdfs(street_corner_unique_gdf, trenches_gdf)
     ox.plot_graph(G)
-    G_undirect = G.to_undirected()
 
-
-    # find out all the street corners of the houses where streetcabinets need to connect to
+    # find out all the street corners of the houses where street cabinets need to connect to
     cabinetcorners = list()
     for building_index, corner_tuple in trench_network.building_trenches_lookup.items():
         cabinetcorners.append({'building_corner_id': corner_tuple[0], **corner_by_id[corner_tuple[1]]})
@@ -196,42 +206,10 @@ if __name__ == "__main__":
             {"building_corner_id": house_node_id, "cluster_id": cluster_id, "streetcabinet_id": street_cabinet_node_id,
              "shortest_path": s_path})
 
+    dropcable_edges = []
+    for cable in building_drop_cables:
+        path_edge = cable['shortest_path']
+        dropcable_edges.append(path_edge)
 
-
-    def gdf_to_nx(gdf_network):
-        # generate graph from GeoDataFrame of LineStrings
-        net = nx.Graph()
-        net.graph['crs'] = gdf_network.crs
-        fields = list(gdf_network.columns)
-
-        for index, row in gdf_network.iterrows():
-            first = row.geometry.coords[0]
-            last = row.geometry.coords[-1]
-
-            data = [row[f] for f in fields]
-            attributes = dict(zip(fields, data))
-            net.add_edge(first, last, **attributes)
-
-        return net
-
-
-    def nx_to_gdf(net, nodes=True, edges=True):
-        # generate nodes and edges geodataframes from graph
-        if nodes is True:
-            node_xy, node_data = zip(*net.nodes(data=True))
-            gdf_nodes = gpd.GeoDataFrame(list(node_data), geometry=[Point(i, j) for i, j in node_xy])
-            gdf_nodes.crs = net.graph['crs']
-
-        if edges is True:
-            starts, ends, edge_data = zip(*net.edges(data=True))
-            gdf_edges = gpd.GeoDataFrame(list(edge_data))
-            gdf_edges.crs = net.graph['crs']
-
-        if nodes is True and edges is True:
-            return gdf_nodes, gdf_edges
-        elif nodes is True and edges is False:
-            return gdf_nodes
-        else:
-            return gdf_edges
-
-    # TODO: houses dijkstra algorithm to streetcabinets
+    # checking the drop cable routes on the graph
+    fig, ax = ox.plot_graph_routes(G, dropcable_edges, route_color='r', route_linewidth=6)
