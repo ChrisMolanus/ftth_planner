@@ -144,6 +144,17 @@ class Trench(dict):
     def has_geometry(self) -> bool:
         return self.has_geometry
 
+    def __eq__(self, other):
+        return (self['u_for_edge'] == other['u_for_edge'] and self['v_for_edge'] == other['v_for_edge']) \
+               or (self['u_for_edge'] == other['v_for_edge'] and self['v_for_edge'] == other['u_for_edge'])
+
+    def __hash__(self):
+        if self['u_for_edge'] > self['v_for_edge']:
+            id_t = (self['u_for_edge'], self['v_for_edge'])
+        else:
+            id_t = (self['v_for_edge'], self['u_for_edge'])
+        return hash(id_t)
+
     def __str__(self):
         if not self['trench_crossing']:
             if self.has_geometry:
@@ -622,7 +633,7 @@ class TrenchInfo:
         if self.geometry and other.geometry:
             return self.segment_index > other.segment_index
         else:
-            return node_distance(other.new_v_node, other.corner_u) > node_distance(self.new_v_node, self.corner_u)
+            return node_distance(other.new_v_node, other.corner_u) < node_distance(self.new_v_node, self.corner_u)
 
 
 def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
@@ -1018,6 +1029,13 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
             if isinstance(crossing, Trench):
                 trenches.append(crossing)
 
+    # Workaround to remove duplicate trenches
+    seen = set()
+    for trench in trenches:
+        if trench not in seen:
+            seen.add(trench)
+    trenches = list(seen)
+
     # Get the building trench info objects
     building_by_closest_trench = get_building_by_closest_trench(building_gdf, trench_corners, trenches)
 
@@ -1035,7 +1053,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
         trenches.append(sub_trenches)
 
     # Remove the original road trenches that have been replaced by the sub-trenches
-    trench_indexes_to_remove.sort(reverse=True)
+    trench_indexes_to_remove.sort()
     for trench_index in trench_indexes_to_remove:
         del trenches[trench_index]
 
