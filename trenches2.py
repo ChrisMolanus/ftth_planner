@@ -730,10 +730,10 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
                                    trench_corners: Dict[str, Set[TrenchCorner]]
                                    ) -> Tuple[Dict[str, Set[TrenchCorner]], List[Trench], List[int]]:
     """
-    Retrunes the:
-    new_trench_corners: The building Nodes and the new road sub-trench Nodes as TrenchCorner
-    new_trenches: The Building Trenches and the new road sub-trenches
-    trench_indexes_to_remove: A list if indexes of the "trenches" list that should be removed
+    Returns the:
+    - new_trench_corners: The building Nodes and the new road sub-trench Nodes as TrenchCorner
+    - new_trenches: The Building Trenches and the new road sub-trenches
+    - trench_indexes_to_remove: A list if indexes of the "trenches" list that should be removed
       since we have replaced them with sub-trenches
     :param building_by_closest_trench: The Trench Info dictionary
     :param trenches: The current list of trenches
