@@ -24,7 +24,7 @@ def plot_network(g_box: networkx.MultiDiGraph):
 # Get graphs of different infrastructure types, then get trenches
 g_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48386, 4.49521,
                            network_type='drive',
-                           simplify=True,
+                           simplify=False,
                            retain_all=False,
                            truncate_by_edge=True)
 building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tags={'building': True})
