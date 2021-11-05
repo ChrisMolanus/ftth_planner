@@ -2,6 +2,9 @@ from enum import Enum
 from typing import List, Dict
 
 import networkx
+import osmnx as ox
+
+import matplotlib.pyplot as plt
 
 from costs import CostParameters
 from trenches2 import TrenchNetwork, Trench
@@ -50,6 +53,17 @@ class FiberNetwork:
 
         # Trenches where osm id is the key and the trench is the value
         self.trenches: Dict[int, Trench] = None
+
+    def plot_network(self, building_gdf):
+        ec = ['black' if 'highway' in d else
+              "grey" if "trench_crossing" in d and d["trench_crossing"] else
+              "blue" if "house_trench" in d else
+              'red' for _, _, _, d in self.fiber_network.edges(keys=True, data=True)]
+        fig, ax = ox.plot_graph(self.fiber_network, bgcolor='white', edge_color=ec,
+                                node_size=0, edge_linewidth=0.5,
+                                show=False, close=False)
+        ox.plot_footprints(building_gdf, ax=ax, color="orange", alpha=0.5)
+        return fig, ax
 
 
 def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParameters) -> FiberNetwork:
