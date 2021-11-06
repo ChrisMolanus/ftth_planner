@@ -128,7 +128,7 @@ if __name__ == "__main__":
     # fiber_edges_df = pd.DataFrame(dropcable_edges, columns=['u', 'v'])
 
     # create network from nodes and edges geoDataFrames
-    G = ox.graph_from_gdfs(street_corner_gdf, trenches_gdf)
+    G = ox.graph_from_gdfs(street_corner_gdf, trenches_gdf, graph_attrs=g_box.graph)
     # make sure to convert to undirected graph
     G = G.to_undirected()
     # plot the network
