@@ -187,7 +187,7 @@ if __name__ == "__main__":
         if column_name.startswith("street"):
             house_centroids_with_street_dimentions[column_name].replace(1, 0.0001, inplace=True)
 
-    min_number_of_house_clusters = int(round(len(trench_network.building_trenches_lookup) / 48, 0))
+    min_number_of_house_clusters = int(math.ceil(len(trench_network.building_trenches_lookup) / 48))
     cabinet_clusters = KMeansConstrained(n_clusters=min_number_of_house_clusters, size_max=48, init='k-means++',
                                          n_init=10, max_iter=300, tol=0.0001, verbose=False, random_state=42,
                                          copy_x=True, n_jobs=3)
