@@ -96,7 +96,8 @@ def point_on_line(u, v, c, return_distance=False):
 
 
 class TrenchCorner(dict):
-    def __init__(self, x: float, y: float, trench_count: int, u_node_id: int, street_ids: Set, *args, **kw):
+    def __init__(self, x: float, y: float, trench_count: int, u_node_id: int, street_ids: Set,
+                 node_for_adding: int = None, *args, **kw):
         """
         A FttH planner trench corner
         :param x: The OSMnx x coordinate of the node
@@ -104,6 +105,7 @@ class TrenchCorner(dict):
         :param trench_count:
         :param u_node_id: The OSMnx node ID of the intersection this corner is on
         :param street_ids: A SET of the string- representation of the sorted list of node IDs
+        :param node_for_adding: The OSMX node id, default is None if not yet known
         :param args: Dict args
         :param kw: Dict kw
         """
@@ -114,6 +116,8 @@ class TrenchCorner(dict):
         self['u'] = u_node_id
         self['street_count'] = 1
         self['street_ids'] = street_ids
+        self['node_for_adding'] = node_for_adding
+
 
     def __cmp__(self, other):
         return self['x'] == other['x'] and self['y'] == other['y']
