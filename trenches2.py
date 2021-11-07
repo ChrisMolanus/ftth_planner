@@ -594,16 +594,18 @@ def intersection_between_points(l1: List[dict], l2: List[dict]) -> bool:
 
 class TrenchNetwork:
     def __init__(self, trench_corners: Dict[str, TrenchCorner], trenches: List[Trench],
-                 building_trenches_lookup: Dict[str, Tuple[int, int]]):
+                 building_trenches_lookup: Dict[str, Tuple[int, int]], corner_by_id: Dict[int, TrenchCorner]):
         """
         A Cognizant FttH Trench Network
         :param trench_corners: The nodes of the network
         :param trenches: The edges of the network
         :param building_trenches_lookup: the building's centroid and trenchcorner of building trench
+        :param corner_by_id: The nodes of the network keyed by id (should replace trench_corners)
         """
         self.trenchCorners = trench_corners
         self.building_trenches_lookup = building_trenches_lookup
         self.trenches = trenches
+        self.corner_by_id = corner_by_id
 
 
 class TrenchInfo:
@@ -1073,7 +1075,12 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     for trench_index in trench_indexes_to_remove:
         del trenches[trench_index]
 
-    return TrenchNetwork(trench_corners, trenches, building_trenches_lookup)
+    corner_by_id: Dict[int, TrenchCorner] = dict()
+    for intersection_osmid, corners in trench_corners.items():
+        for corner in corners:
+            corner_by_id[corner['node_for_adding']] = corner
+
+    return TrenchNetwork(trench_corners, trenches, building_trenches_lookup, corner_by_id)
 
 
 def add_trenches_to_network(trench_network: TrenchNetwork,
