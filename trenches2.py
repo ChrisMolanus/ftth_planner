@@ -680,7 +680,8 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
         distance = float('inf')
         building_centriod_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0], 'building_index': building_index}
         # There might be buildings in the box that are on roads that are not in the box, geo fencing problem
-        if (not pd.isnull(street_name)) and len(street_trenches[street_name]) > 0:
+        # or just buildings with no address
+        if street_name in street_trenches and len(street_trenches[street_name]) > 0:
             # Loop over every trench for this street and find the closest one
             for trench_index, trench in street_trenches[street_name].items():
                 if trench_index not in building_by_closest_trench:
