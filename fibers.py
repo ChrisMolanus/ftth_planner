@@ -91,6 +91,67 @@ class FiberNetwork:
         self.trenches: pd.DataFrame = None
 
 
+class DecentralLocation(Equipment):
+    def __init__(self, trench_corner: TrenchCorner, street_cabinets: List[StreetCabinet]):
+        super(DecentralLocation, self).__init__(EquipmentType.DecentralLocation)
+        self.street_cabinets = street_cabinets
+        self.trench_corner = trench_corner
+
+
+def get_ds_locations(trench_network, cabinet_look_up, decentralLocation_candidates: pd.DataFrame):
+    cabinet_list = list()
+    for cabinet_id, street_cabinet in cabinet_look_up.items():
+        cabinet_list.append({"cabinet_id": cabinet_id, **street_cabinet.trench_corner})
+
+    cabinets_df = pd.DataFrame.from_records(cabinet_list)
+
+    decentralLocation_candidates_gdf = gpd.GeoDataFrame(decentralLocation_candidates,
+                                                    geometry=gpd.points_from_xy(
+                                                        decentralLocation_candidates.x,
+                                                        decentralLocation_candidates.y))
+
+    from sklearn.cluster import DBSCAN
+    clustering = DBSCAN(eps=3, min_samples=2).fit(cabinets_df[["x", "y"]])
+    print(clustering.labels_)
+    print(clustering)
+
+    cabinets_df["ds_id"] = clustering.labels_
+
+    ds_ids = cabinets_df["ds_id"].unique()
+    dc_centroid = list()
+    for ds_id in ds_ids:
+        points = cabinets_df[cabinets_df.ds_id == ds_id]
+        x = np.sum(points.x) / len(points)
+        y = np.sum(points.y) / len(points)
+        dc_centroid.append({"x": x, "y": y, "ds_id": ds_id, "cabinet_ids": set(points.cabinet_id)})
+
+    dc_centroid_df = pd.DataFrame(dc_centroid)
+    dc_controid_gdf = gpd.GeoDataFrame(dc_centroid_df,
+                                                    geometry=gpd.points_from_xy(
+                                                    dc_centroid_df.x,
+                                                    dc_centroid_df.y))
+
+
+    centroid_to_building_trench_distances = ckdnearest(decentralLocation_candidates_gdf, dc_controid_gdf)
+    # Find the street cabinet candidates (corners of houses) that is closest to the centroid
+    idx = centroid_to_building_trench_distances.groupby('ds_id', sort=False)["dist"].transform(min) == \
+          centroid_to_building_trench_distances['dist']
+    dc_locations_ids = centroid_to_building_trench_distances.loc[idx, ['street_corner_id', 'ds_id', "cabinet_ids"]]
+    dc_locations_ids.rename(columns={'street_corner_id': "ds_corner_id"}, inplace=True)
+
+    ds_look_up: Dict[int, StreetCabinet] = dict()
+    for index, row in dc_locations_ids.iterrows():
+        sc = list()
+        for cabinet_id in row["cabinet_ids"]:
+            sc.append(cabinet_look_up[cabinet_id])
+        ds_look_up[row['ds_id']] = DecentralLocation(trench_corner=trench_network.corner_by_id[
+                                                               row['ds_corner_id']],
+                                                     street_cabinets=sc
+                                                     )
+    return ds_look_up
+
+
+
 def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParameters,
                       building_gdf: gpd.GeoDataFrame, g_box: networkx.MultiGraph) -> FiberNetwork:
 
@@ -113,8 +174,11 @@ def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParame
                                                         trenches_df,
                                                         trenches_gdf,
                                                         cabinet_look_up)
+    
+    ds_look_up = get_ds_locations(trench_network, cabinet_look_up, streetcabinet_candidates_df)
+    fiber_network.equipment[EquipmentType.DecentralLocation] = list(ds_look_up.values())
 
-    plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up)
+    plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up, ds_look_up)
 
     return FiberNetwork()
 
@@ -300,7 +364,7 @@ def find_shortest_path_to_buildings(cabinet_look_up, g_box, streetcabinet_candid
     return building_drop_cables
 
 
-def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up):
+def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up, ds_look_up):
     cabinet_list = list()
     for cluster_id, d in cabinet_look_up.items():
         node = d.trench_corner
@@ -311,6 +375,19 @@ def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up):
     cabinet_gdf = gpd.GeoDataFrame(
         cabinet_df, geometry=gpd.points_from_xy(cabinet_df.x, cabinet_df.y))
     cabinet_gdf.set_index(['x', 'y', 'key'], inplace=True)
+
+    ds_list = list()
+    for cluster_id, d in ds_look_up.items():
+        node = d.trench_corner
+        ds_list.append(
+            {"x": node["x"], "y": node["y"], "key": 1, "name": "ds " + str(cluster_id), "equipment": True,
+             "equipment_type": EquipmentType.DecentralLocation})
+    ds_df = pd.DataFrame(ds_list)
+    ds_gdf = gpd.GeoDataFrame(
+        ds_df, geometry=gpd.points_from_xy(ds_df.x, ds_df.y))
+    ds_gdf.set_index(['x', 'y', 'key'], inplace=True)
+
+
     ec = ['black' if 'highway' in d else
           "grey" if "trench_crossing" in d and d["trench_crossing"] else
           "blue" if "house_trench" in d and d["house_trench"] else
@@ -319,7 +396,8 @@ def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up):
     fig, ax = ox.plot_graph(fiber_graph, bgcolor='white', edge_color=ec,
                             node_size=0, edge_linewidth=0.5,
                             show=False, close=False)
-    ax.scatter(cabinet_df.x, cabinet_df.y, s=7)
+    ax.scatter(cabinet_df.x, cabinet_df.y, s=7, color="purple")
+    ax.scatter(ds_df.x, ds_df.y, s=7)
     ox.plot_footprints(building_gdf, ax=ax, color="orange", alpha=0.5)
 
 
