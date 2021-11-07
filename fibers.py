@@ -234,10 +234,14 @@ if __name__ == "__main__":
         cabinet_id = street_trench['cabinet_id']
         cabinet_corner = cabinet_look_up[cabinet_id].trench_corner
         cabinet_corner_id = cabinet_corner['node_for_adding']
-        s_path = nx.algorithms.shortest_paths.shortest_path(graph, source=house_node_id, target=cabinet_corner_id)
-        building_drop_cables.append(
-            {"building_corner_id": house_node_id, "cabinet_id": cabinet_id, "cabinet_corner_id": cabinet_corner_id,
-             "shortest_path": s_path, "building_index": building_index})
+        try:
+            s_path = nx.algorithms.shortest_paths.shortest_path(graph, source=house_node_id, target=cabinet_corner_id)
+            building_drop_cables.append(
+                {"building_corner_id": house_node_id, "cabinet_id": cabinet_id, "cabinet_corner_id": cabinet_corner_id,
+                 "shortest_path": s_path, "building_index": building_index})
+        except networkx.exception.NetworkXNoPath:
+            pass
+            #print(f"No drop cable path could be found for building_index {building_index}")
 
     trenches_df["min_node_id"] = trenches_df[['u', 'v']].min(axis=1)
     trenches_df["max_node_id"] = trenches_df[['u', 'v']].max(axis=1)
