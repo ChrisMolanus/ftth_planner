@@ -916,8 +916,10 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                         if point_pair1[0]['u'] != point_pair1[1]['u']:
                             # trench_candidate as to be a list because tuples are immutable,
                             # and we might invalidate it later whe we chose from the candidates
-                            trench_candidate = [point_pair1[0], point_pair1[1], street['name']]
-
+                            if "name" in street:
+                                trench_candidate = [point_pair1[0], point_pair1[1], street['name']]
+                            else:
+                                trench_candidate = [point_pair1[0], point_pair1[1], "Unknown"]
                             # There is no need to have multiple trenches between the same two points
                             # So only process a pair ones
                             xs = [trench_candidate[0]['x'], trench_candidate[1]['x']]
