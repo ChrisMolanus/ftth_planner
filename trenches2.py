@@ -997,7 +997,8 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                         new_curved_pp.append(curved_trench)
                     else:
                         print(f"Can't find side corners {street}")
-
+        else:
+            print(f"Warning: street_segment_id {street_segment_id} not in trench_corners")
     # If there are more than one possibility to have a trench on one side of the street segment,
     # Find the shortest one and make the others as invalid i.e. (None, None)
     # TODO: split by side of road and find shortest on ether side separately
