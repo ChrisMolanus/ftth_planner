@@ -291,7 +291,7 @@ if __name__ == "__main__":
             trench_ids.append((min(pair), max(pair)))
             trench = trench_look_up[trench_look_up.index == (500000149, 500000150)]
             length += trench.length
-            graph.add_edge(pair[0], pair[1], 1, name="Fiber", cable=True, cable_type=CableType.SpliterToHouseDropCable)
+            graph.add_edge(pair[0], pair[1], 2, name="Fiber", cable=True, cable_type=CableType.SpliterToHouseDropCable)
             sub_cable_dict.append({"u": pair[0], "v": pair[1], "key": 1, "name": "Fiber", "cable": True,
                                "cable_type": CableType.SpliterToHouseDropCable})
 
