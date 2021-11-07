@@ -332,17 +332,19 @@ def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: Li
             'street_names': street_names}
 
 
-def get_trench_corners(network: networkx.MultiDiGraph,
+def get_trench_corners(road_network: networkx.MultiDiGraph,
                        ref_distance_from_center_of_road: float) -> Tuple[Dict[str, Set[TrenchCorner]],
                                                                          Dict[str, List[Trench]]]:
     """
     Create TrenchCorners (Nodes) for every intersection in the network.
     The TrenchCorners will be places between each of the roads of the intersection.
     It also creates the trenches between those points to connect road trenches to each other (road_crossing Trenches)
-    :param network: The road network
+    :param road_network: The road network
     :param ref_distance_from_center_of_road: The distance the trenches should be from the center of the road
     :return: trench_corners, road_crossing
     """
+    # make network undirected so that one way street nodes have two neighbors
+    network = road_network.to_undirected()
     nodes = dict()
     output_trench_corners = dict()
     output_road_crossing = dict()
