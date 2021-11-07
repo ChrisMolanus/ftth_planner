@@ -37,7 +37,7 @@ trench_network_graph = add_trenches_to_network(trench_network, g_box)
 plot_network(trench_network_graph)
 
 cost_parameters = CostParameters()
-fiber_network = get_fiber_network(trench_network, cost_parameters)
+fiber_network = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
 
 detailed_cost = DetailedCost(fiber_network, cost_parameters)
 
