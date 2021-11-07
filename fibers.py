@@ -114,19 +114,14 @@ def ckdnearest(gdA, gdB):
 
 
 def get_trench_corner_dataframe(trench_network: TrenchNetwork):
-    corner_by_id: Dict[int, TrenchCorner] = dict()
-    trenchCorners: List[TrenchCorner] = list()
-    for street_id, corners in trench_network.trenchCorners.items():
-        for corner in corners:
-            corner_by_id[corner['node_for_adding']] = corner
-            trenchCorners.append(corner)
+    trenchCorners = trench_network.corner_by_id.values()
     trench_corner_df = pd.DataFrame(trenchCorners)
     trench_corner_gdf = gpd.GeoDataFrame(trench_corner_df, geometry=gpd.points_from_xy(
         trench_corner_df.x,
         trench_corner_df.y))
     trench_corner_gdf.set_index('node_for_adding', inplace=True)
     trench_corner_gdf = trench_corner_gdf[~trench_corner_gdf.index.duplicated(keep='first')]
-    return corner_by_id, trench_corner_gdf
+    return trench_corner_gdf
 
 
 def get_trench_dataframe(trench_network: TrenchNetwork):
@@ -135,8 +130,8 @@ def get_trench_dataframe(trench_network: TrenchNetwork):
     for index, row in trenches_df.iterrows():
         u_id = row["u_for_edge"]
         v_id = row["v_for_edge"]
-        u_node = corner_by_id[u_id]
-        v_node = corner_by_id[v_id]
+        u_node = trench_network.corner_by_id[u_id]
+        v_node = trench_network.corner_by_id[v_id]
         linestring = LineString([[u_node['x'], u_node['y']], [v_node['x'], v_node['y']]])
         linestrings.append(linestring)
     trenches_df["geometry"] = linestrings
@@ -153,7 +148,7 @@ def get_streetcabinet_candidates(trench_network: TrenchNetwork):
         building = building_gdf.loc[building_index]
         streetcabinet_candidates.append({'building_corner_id': corner_tuple[0], "street_corner_id": corner_tuple[1],
                                          'street': building['addr:street'], "building_index": building_index,
-                                         **corner_by_id[corner_tuple[1]]})
+                                         **trench_network.corner_by_id[corner_tuple[1]]})
     streetcabinet_candidates_df = pd.DataFrame(streetcabinet_candidates)
     return streetcabinet_candidates_df
 
