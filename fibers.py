@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 from typing import List, Dict, Tuple
 import pickle
@@ -91,7 +92,7 @@ class FiberNetwork:
 
 
 def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParameters,
-                      building_gdf: gpd.GeoDataFrame) -> FiberNetwork:
+                      building_gdf: gpd.GeoDataFrame, g_box: networkx.MultiGraph) -> FiberNetwork:
     return FiberNetwork()
 
 
@@ -112,36 +113,7 @@ def ckdnearest(gdA, gdB):
     return gdf
 
 
-if __name__ == "__main__":
-    # Try and load cached data for speed
-    if not os.path.isfile("g_box.p"):
-        g_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48386, 4.49521,
-                                   network_type='drive',
-                                   simplify=False,
-                                   retain_all=False,
-                                   truncate_by_edge=True)
-        pickle.dump(g_box, open("g_box.p", "wb"))
-    else:
-        g_box: networkx.MultiGraph = pickle.load(open("g_box.p", "rb"))
-
-    if not os.path.isfile("building_gdf.p"):
-        building_gdf: gpd.GeoDataFrame = pickle.load(open("building_gdf.p", "rb"))
-        pickle.dump(building_gdf, open("building_gdf.p", "wb"))
-    else:
-        building_gdf: gpd.GeoDataFrame = pickle.load(open("building_gdf.p", "rb"))
-
-    if not os.path.isfile("trench_network.p"):
-        trench_network = get_trench_network(g_box, building_gdf)
-        pickle.dump(trench_network, open("trench_network.p", "wb"))
-    else:
-        trench_network: TrenchNetwork = pickle.load(open("trench_network.p", "rb"))
-
-
-    cost_parameters = CostParameters()
-    # F
-    #houses_filter = building_gdf.filter(trench_network.building_trenches_lookup.keys(), axis=0)
-
-    # Create a geoDataFrame with all the corners of the network (nodes)
+def get_trench_corner_dataframe(trench_network: TrenchNetwork):
     corner_by_id: Dict[int, TrenchCorner] = dict()
     trenchCorners: List[TrenchCorner] = list()
     for street_id, corners in trench_network.trenchCorners.items():
@@ -154,8 +126,10 @@ if __name__ == "__main__":
         trench_corner_df.y))
     trench_corner_gdf.set_index('node_for_adding', inplace=True)
     trench_corner_gdf = trench_corner_gdf[~trench_corner_gdf.index.duplicated(keep='first')]
+    return corner_by_id, trench_corner_gdf
 
-    # Create a geoDataFrame containing all the trenches in the network (edges in LineString object)
+
+def get_trench_dataframe(trench_network: TrenchNetwork):
     trenches_df = pd.DataFrame(trench_network.trenches)
     linestrings = list()
     for index, row in trenches_df.iterrows():
@@ -170,8 +144,10 @@ if __name__ == "__main__":
     trenches_gdf.rename({"u_for_edge": "u", "v_for_edge": "v"}, inplace=True, axis=1)
     trenches_gdf['key'] = 1
     trenches_gdf.set_index(['u', 'v', 'key'], inplace=True)
+    return trenches_df, trenches_gdf
 
-    # Create Street-Cabinet-Candidate locations from building trench road side nodes
+
+def get_streetcabinet_candidates(trench_network: TrenchNetwork):
     streetcabinet_candidates = list()
     for building_index, corner_tuple in trench_network.building_trenches_lookup.items():
         building = building_gdf.loc[building_index]
@@ -179,6 +155,45 @@ if __name__ == "__main__":
                                          'street': building['addr:street'], "building_index": building_index,
                                          **corner_by_id[corner_tuple[1]]})
     streetcabinet_candidates_df = pd.DataFrame(streetcabinet_candidates)
+    return streetcabinet_candidates_df
+
+
+if __name__ == "__main__":
+    # Try and load cached data for speed
+    box = (50.843217, 50.833949, 4.439903, 4.461962)
+    if not os.path.isfile("g_box.p"):
+        g_box = ox.graph_from_bbox(*box,
+                                   network_type='drive',
+                                   simplify=False,
+                                   retain_all=False,
+                                   truncate_by_edge=True)
+        pickle.dump(g_box, open("g_box.p", "wb"))
+    else:
+        g_box: networkx.MultiGraph = pickle.load(open("g_box.p", "rb"))
+
+    if not os.path.isfile("building_gdf.p"):
+        building_gdf = ox.geometries_from_bbox(*box, tags={'building': True})
+        pickle.dump(building_gdf, open("building_gdf.p", "wb"))
+    else:
+        building_gdf: gpd.GeoDataFrame = pickle.load(open("building_gdf.p", "rb"))
+
+    if not os.path.isfile("trench_network.p"):
+        trench_network = get_trench_network(g_box, building_gdf)
+        pickle.dump(trench_network, open("trench_network.p", "wb"))
+    else:
+        trench_network: TrenchNetwork = pickle.load(open("trench_network.p", "rb"))
+
+    cost_parameters = CostParameters()
+
+
+    # Create a geoDataFrame with all the corners of the network (nodes)
+    corner_by_id, trench_corner_gdf = get_trench_corner_dataframe(trench_network)
+
+    # Create a geoDataFrame containing all the trenches in the network (edges in LineString object)
+    trenches_df, trenches_gdf = get_trench_dataframe(trench_network)
+
+    # Create Street-Cabinet-Candidate locations from building trench road side nodes
+    streetcabinet_candidates_df = get_streetcabinet_candidates(trench_network)
 
     # Create Dataframe for clustering
     house_centroid_df = streetcabinet_candidates_df[["x", "y", "street"]]
