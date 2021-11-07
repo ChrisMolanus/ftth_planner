@@ -9,6 +9,7 @@ import itertools
 import matplotlib.pyplot as plt
 import math
 
+import pandas as pd
 from shapely.geometry import LineString
 
 distance_from_center_of_road = 0.0001
@@ -677,7 +678,7 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
         distance = float('inf')
         building_centriod_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0], 'building_index': building_index}
         # There might be buildings in the box that are on roads that are not in the box, geo fencing problem
-        if len(street_trenches[street_name]) > 0:
+        if (not pd.isnull(street_name)) and len(street_trenches[street_name]) > 0:
             # Loop over every trench for this street and find the closest one
             for trench_index, trench in street_trenches[street_name].items():
                 if trench_index not in building_by_closest_trench:
