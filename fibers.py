@@ -278,7 +278,7 @@ if __name__ == "__main__":
     fiber_network.equipment[EquipmentType.Splitter] = spliters
     fiber_network.equipment[EquipmentType.StreetCabinet] = streetcabinets
 
-
+    fiber_graph = ox.graph_from_gdfs(trench_corner_gdf, gpd.GeoDataFrame(), graph_attrs=g_box.graph)
     dropcable_edges = []
     sub_cable_dict: List[dict] = list()
     for cable in building_drop_cables:
@@ -292,6 +292,7 @@ if __name__ == "__main__":
             trench = trench_look_up[trench_look_up.index == (500000149, 500000150)]
             length += trench.length
             graph.add_edge(pair[0], pair[1], 2, name="Fiber", cable=True, cable_type=CableType.SpliterToHouseDropCable)
+            fiber_graph.add_edge(pair[0], pair[1], 1, name="Fiber", cable=True, cable_type=CableType.SpliterToHouseDropCable)
             sub_cable_dict.append({"u": pair[0], "v": pair[1], "key": 1, "name": "Fiber", "cable": True,
                                "cable_type": CableType.SpliterToHouseDropCable})
 
@@ -317,8 +318,8 @@ if __name__ == "__main__":
           "grey" if "trench_crossing" in d and d["trench_crossing"] else
           "blue" if "house_trench" in d and d["house_trench"] else
           "green" if "cable" in d and d["cable_type"] == CableType.SpliterToHouseDropCable else
-          'red' for _, _, _, d in graph.edges(keys=True, data=True)]
-    fig, ax = ox.plot_graph(graph, bgcolor='white', edge_color=ec,
+          'red' for _, _, _, d in fiber_graph.edges(keys=True, data=True)]
+    fig, ax = ox.plot_graph(fiber_graph, bgcolor='white', edge_color=ec,
                             node_size=0, edge_linewidth=0.5,
                             show=False, close=False)
     ax.scatter(cabinet_df.x, cabinet_df.y, s=7)
