@@ -130,6 +130,13 @@ class DecentralLocation(Equipment):
 
 
 def get_ds_locations(trench_network: TrenchNetwork, cabinet_look_up: Dict[int, StreetCabinet], decentralLocation_candidates: pd.DataFrame) -> Dict[int, StreetCabinet]:
+    """
+    Create Decental locations
+    :param trench_network: The Trench Network
+    :param cabinet_look_up: The Street Cabinets
+    :param decentralLocation_candidates: Possible locations for Decental locations
+    :return: Decental locations
+    """
     cabinet_list = list()
     for cabinet_id, street_cabinet in cabinet_look_up.items():
         cabinet_list.append({"cabinet_id": cabinet_id, **street_cabinet.trench_corner})
@@ -182,10 +189,16 @@ def get_ds_locations(trench_network: TrenchNetwork, cabinet_look_up: Dict[int, S
     return ds_look_up
 
 
-
 def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParameters,
                       building_gdf: gpd.GeoDataFrame, g_box: networkx.MultiGraph) -> FiberNetwork:
-
+    """
+    Create a Fiber Optic Network
+    :param trench_network: The Trench Network
+    :param cost_parameters: The cost parameters
+    :param building_gdf: The Geo DataFrame of all Buildings
+    :param g_box: The Road network graph
+    :return: The Fiber Optic Network
+    """
     # Create a geoDataFrame with all the corners of the network (nodes)
     trench_corner_gdf = get_trench_corner_dataframe(trench_network)
 
