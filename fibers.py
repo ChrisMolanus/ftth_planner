@@ -26,7 +26,7 @@ from trenches2 import TrenchNetwork, TrenchCorner, add_trenches_to_network, get_
 class CableType(Enum):
     CoreToDS = "CoreToDS"
     DSToSplitter96Cores = "DSToSplitter96Cores"
-    SpliterToHouseDropCable = "SpliterToHouseDropCable"
+    SplitterToHouseDropCable = "SpliterToHouseDropCable"
 
 
 class EquipmentType(Enum):
@@ -212,7 +212,7 @@ def _find_shortest_path_to_streetcabinets(ds_look_up, g_box: networkx.MultiGraph
                 s_path = nx.algorithms.shortest_paths.shortest_path(graph, source=cabinet_corner_id, target=ds_corner_id)
                 co_fiber_cables.append(
                     {"cabinet_corner_id": cabinet_corner_id, "ds_id": ds, "ds_corner_id": ds_corner_id,
-                     "shortest_path": s_path, "decentral_locations": ds})
+                     "shortest_path": s_path, "decentral_locations": ds, 'street_cabinet_id': street_cabinet_id})
             except networkx.exception.NetworkXNoPath:
                 pass
                 # print(f"No drop cable path could be found for building_index {building_index}")
@@ -233,7 +233,7 @@ def _get_co_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.Mu
     :return: A Fiber Network object and a Fiber graph as a NetworkX graph
     """
     fiber_network = FiberNetwork()
-    co_fiber_cables = _find_shortest_path_to_buildings(ds_look_up, g_box,
+    co_fiber_cables = _find_shortest_path_to_streetcabinets(ds_look_up, g_box,
                                                             building_trenches_df,
                                                             trench_corner_gdf, trenches_gdf)
 
@@ -245,20 +245,15 @@ def _get_co_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.Mu
 
     cables: List[FiberCable] = list()
     fiber_network.fibers[CableType.DSToSplitter96Cores] = cables
-    onts: List[ONT] = list()
-    spliters: List[Splitter] = list()
-    streetcabinets: List[StreetCabinet] = list()
-    fiber_network.equipment[EquipmentType.ONT] = onts
-    fiber_network.equipment[EquipmentType.Splitter] = spliters
-    fiber_network.equipment[EquipmentType.StreetCabinet] = streetcabinets
 
     fiber_graph = ox.graph_from_gdfs(trench_corner_gdf, gpd.GeoDataFrame(), graph_attrs=g_box.graph)
     co_fiber_cable_edges = []
     sub_cable_dict: List[dict] = list()
     all_trench_ids: Set[Tuple[int, int]] = set()
-    for cable in co_fiber_cable_edges:
+    for cable in co_fiber_cables:
         path_edge = cable['shortest_path']
         ds_id = cable["ds_id"]
+        cabinet_id = cable['cabinet_corner_id']
         co_fiber_cable_edges.append(path_edge)
         trench_ids: List[Tuple[int, int]] = list()
         length = 0.0
@@ -268,20 +263,17 @@ def _get_co_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.Mu
             all_trench_ids.add(trench_id)
             trench = trench_look_up[trench_look_up.index == trench_id]
             length += trench.length
-            fiber_graph.add_edge(pair[0], pair[1], 1, name="Fiber", cable=True,
+            fiber_graph.add_edge(pair[0], pair[1], 1, name="Co_Fiber", cable=True,
                                  cable_type=CableType.DSToSplitter96Cores)
-            sub_cable_dict.append({"u": pair[0], "v": pair[1], "key": 1, "name": "Fiber", "cable": True,
+            sub_cable_dict.append({"u": pair[0], "v": pair[1], "key": 1, "name": "Co_Fiber", "cable": True,
                                    "cable_type": CableType.DSToSplitter96Cores})
 
         cables.append(FiberCable(trench_ids, length, CableType.DSToSplitter96Cores))
-        splitter = Splitter(ds_look_up[ds_id])
-        spliters.append(splitter)
-        onts.append(ONT(building_index=cable["building_index"], splitter=splitter))
     sub_cable_df = pd.DataFrame(sub_cable_dict)
     sub_cable_gdf = gpd.GeoDataFrame(sub_cable_df)
     sub_cable_gdf.set_index(['u', 'v', 'key'], inplace=True)
 
-    fiber_network.trenches = trench_look_up.loc[all_trench_ids]
+    fiber_network.trenches = pd.concat(fiber_network.trenches, trench_look_up.loc[all_trench_ids])
 
     return fiber_network, fiber_graph
 
@@ -315,9 +307,16 @@ def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParame
                                                          trenches_df,
                                                          trenches_gdf,
                                                          cabinet_look_up)
-    
+
     ds_look_up = _get_ds_locations(trench_network, cabinet_look_up, building_trenches_df)
     fiber_network.equipment[EquipmentType.DecentralLocation] = list(ds_look_up.values())
+
+    fiber_network, fiber_graph = _get_co_cable_network(building_trenches_with_cabinet_df,
+                                                         g_box,
+                                                         trench_corner_gdf,
+                                                         trenches_df,
+                                                         trenches_gdf,
+                                                         cabinet_look_up)
 
     plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up, ds_look_up)
 
@@ -478,7 +477,7 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
     trench_look_up.index = mi
 
     cables: List[FiberCable] = list()
-    fiber_network.fibers[CableType.SpliterToHouseDropCable] = cables
+    fiber_network.fibers[CableType.SplitterToHouseDropCable] = cables
     onts: List[ONT] = list()
     spliters: List[Splitter] = list()
     streetcabinets: List[StreetCabinet] = list()
@@ -503,11 +502,11 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
             trench = trench_look_up[trench_look_up.index == trench_id]
             length += trench.length
             fiber_graph.add_edge(pair[0], pair[1], 1, name="Fiber", cable=True,
-                                 cable_type=CableType.SpliterToHouseDropCable)
+                                 cable_type=CableType.SplitterToHouseDropCable)
             sub_cable_dict.append({"u": pair[0], "v": pair[1], "key": 1, "name": "Fiber", "cable": True,
-                                   "cable_type": CableType.SpliterToHouseDropCable})
+                                   "cable_type": CableType.SplitterToHouseDropCable})
 
-        cables.append(FiberCable(trench_ids, length, CableType.SpliterToHouseDropCable))
+        cables.append(FiberCable(trench_ids, length, CableType.SplitterToHouseDropCable))
         splitter = Splitter(cabinet_look_up[cabinet_id])
         spliters.append(splitter)
         onts.append(ONT(building_index=cable["building_index"], splitter=splitter))
@@ -582,7 +581,8 @@ def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up: Dict[int, Str
     ec = ['black' if 'highway' in d else
           "grey" if "trench_crossing" in d and d["trench_crossing"] else
           "blue" if "house_trench" in d and d["house_trench"] else
-          "green" if "cable" in d and d["cable_type"] == CableType.SpliterToHouseDropCable else
+          "green" if "cable" in d and d["cable_type"] == CableType.SplitterToHouseDropCable else
+          "yellow" if "cable" in d and d["cable_type"] == CableType.DSToSplitter96Cores else
           'red' for _, _, _, d in fiber_graph.edges(keys=True, data=True)]
     fig, ax = ox.plot_graph(fiber_graph, bgcolor='white', edge_color=ec,
                             node_size=0, edge_linewidth=0.5,
@@ -597,7 +597,8 @@ if __name__ == "__main__":
     start_time = time.time()
         # Try and load cached data for speed
     # box2 = (51.98446, 51.98000, 5.64113, 5.6575)
-    box = (50.843217, 50.833949, 4.439903, 4.461962)
+    # box = (50.843217, 50.833949, 4.439903, 4.461962)
+    box = (52.38132054097, 52.36193148749, 4.84358307250, 4.884481392928)
     if not os.path.isfile("g_box.p"):
         g_box = ox.graph_from_bbox(*box,
                                    network_type='drive',
