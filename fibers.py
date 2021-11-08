@@ -222,9 +222,9 @@ def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParame
     ds_look_up = _get_ds_locations(trench_network, cabinet_look_up, building_trenches_df)
     fiber_network.equipment[EquipmentType.DecentralLocation] = list(ds_look_up.values())
 
-    plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up, ds_look_up)
+    fig = plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up, ds_look_up)
 
-    return FiberNetwork()
+    return fiber_network, fig
 
 
 def ckdnearest(gdA: gpd.GeoDataFrame, gdB: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
