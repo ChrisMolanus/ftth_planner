@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Dict, List, Tuple, Set, Any, Hashable
 
 import geopandas
@@ -129,6 +130,12 @@ class TrenchCorner(dict):
         return self['x'] == other['x'] and self['y'] == other['y']
 
 
+class TrenchType(Enum):
+    Road_side = 1
+    Road_crossing = 2
+    Building = 3
+
+
 class Trench(dict):
     def __init__(self, u_for_edge: int, v_for_edge: int, name: str, length: float, street_names: Set[str], trench: bool = True,
                  trench_crossing: bool = False, geometry: LineString = None,  *args, **kw):
@@ -145,6 +152,13 @@ class Trench(dict):
             self.has_geometry = True
         else:
             self.has_geometry = False
+
+        if self['trench_crossing']:
+            self.type = TrenchType.Road_crossing
+        elif self['house_trench']:
+            self.type = TrenchType.Building
+        else:
+            self.type = TrenchType.Road_side
 
     def has_geometry(self) -> bool:
         return self.has_geometry
