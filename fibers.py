@@ -494,6 +494,8 @@ def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up: Dict[int, Str
     ax.scatter(ds_df.x, ds_df.y, s=7)
     ox.plot_footprints(building_gdf, ax=ax, color="orange", alpha=0.5)
 
+    return(fig)
+
 
 if __name__ == "__main__":
     # Try and load cached data for speed
