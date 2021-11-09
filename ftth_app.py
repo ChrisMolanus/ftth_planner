@@ -102,21 +102,27 @@ detailed_cost = get_costs(fiber_network, cost_parameters)
 #####################################################
 
 # Map with optimal fiber route
-st.subheader(f'Optimal fiber network route for [N{north}, S{south}, E{east}, W{west}] \n')
+st.subheader(f'Optimal fiber network route for [N:{north}, S:{south}, E:{east}, W:{west}] \n')
 # image_route_map = Image.open('images/ftth_map_indexed.png')
 # st.image(image_route_map, use_column_width=True)
 st.pyplot(fig)
 
+st.header('Cost data \n')
 # Subheader for cost data
-st.subheader('Cost data \n')
+
 
 # Dataframe
-cols_field, data_frame = st.columns([1,3])
+#cols_field, data_frame = st.beta_columns([1, 3])
 
-cols = list('ABCDE')
-df_rand = pd.DataFrame(np.random.randint(0,100,size=(100, 5)), columns=cols)
+#cols = ["Type", "Quantity", "Quantity units", "Total Cost"]
+st.subheader('Material data \n')
+materials_df = detailed_cost.get_materials_dataframe()
+#materials_selected_cols = cols_field.multiselect("Costs for Materials", materials_df.columns.tolist(), default=cols)
+st.dataframe(materials_df)
 
-selected_cols = cols_field.multiselect("Choose columns to display", df_rand.columns.tolist(), default=cols)
-data_frame.dataframe(df_rand[selected_cols])
+st.subheader('Labour data \n')
+labor_df = detailed_cost.get_labor_dataframe()
+#labor_selected_cols = cols_field.multiselect("Costs for Materials", materials_df.columns.tolist(), default=cols)
+st.dataframe(labor_df)
 
 
