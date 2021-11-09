@@ -47,10 +47,10 @@ st.subheader('Cognizant’s fiber network optimizer \n')
 # Inputs
 
 # Sidebar inputs
-north = north_field.number_input('North', 0.0,200.0,50.843217)
-south = south_field.number_input('South', 0.0,200.0,50.833949)
-east = east_field.number_input('East', 0.0,200.0,4.439903)
-west = west_field.number_input('West', 0.0,200.0,4.461962)
+north = north_field.text_input('North','50.78694')
+south = south_field.text_input('South','50.77902')
+east = east_field.text_input('East', '4.48386')
+west = west_field.text_input('West', '4.49521')
 
 # Input boxes for choosing address
 # col1, col2 = st.columns(2)
@@ -78,7 +78,7 @@ def plot_network(g_box: networkx.MultiDiGraph):
 
 
 # Get graphs of different infrastructure types, then get trenches
-box = (north, south, east, west)
+box = (float(north), float(south), float(east), float(west))
 g_box = ox.graph_from_bbox(*box,
                            network_type='drive',
                            simplify=False,
@@ -93,7 +93,7 @@ trench_network_graph = add_trenches_to_network(trench_network, g_box)
 
 
 cost_parameters = CostParameters()
-fiber_network = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
+fiber_network, fig = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
 
 detailed_cost = DetailedCost(fiber_network, cost_parameters)
 
@@ -101,8 +101,6 @@ detailed_report = get_detailed_report(detailed_cost, building_gdf)
 
 if detailed_report.plot is not None:
     detailed_report.plot.show()
-
-fig = plot_fiber_network(fiber_network.fiber_graph, building_gdf, fiber_network.equipment[EquipmentType.StreetCabinet], fiber_network.equipment[EquipmentType.DecentralLocation])
 
 # TODO: convert detailed_report to PDF
 
@@ -114,13 +112,16 @@ st.subheader(f'Optimal fiber network route for [N{north}, S{south}, E{east}, W{w
 # st.image(image_route_map, use_column_width=True)
 st.pyplot(fig)
 
-# # Dataframe
-# cols_field, data_frame = st.columns(1,3)
-# st.subheader('Data data Data data... \n')
-# cols = list('ABCDE')
-# df_rand = pd.DataFrame(np.random.randint(0,100,size=(100, 5)), columns=cols)
-#
-# cols_field.multiselect("Choose columns to display", df_rand.columns.tolist(), default=cols)
-# data_frame.dataframe(df_rand[st_ms])
+# Subheader for cost data
+st.subheader('Cost data \n')
+
+# Dataframe
+cols_field, data_frame = st.columns([1,3])
+
+cols = list('ABCDE')
+df_rand = pd.DataFrame(np.random.randint(0,100,size=(100, 5)), columns=cols)
+
+selected_cols = cols_field.multiselect("Choose columns to display", df_rand.columns.tolist(), default=cols)
+data_frame.dataframe(df_rand[selected_cols])
 
 
