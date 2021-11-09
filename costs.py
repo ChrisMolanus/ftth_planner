@@ -17,22 +17,22 @@ class DetailedCostLine:
         self.quantity = quantity
 
 
-def get_cost_for_cable_installation(cable_type: CableType, length: float):
+def get_cost_for_cable_installation(cable_type: CableType, length: float, cost_arameters: CostParameters):
     if cable_type == CableType.CoreToDS:
-        return length * CostParameters.fiber_ds_to_core_per_km
+        return length * cost_arameters.fiber_ds_to_core_per_km
     elif cable_type == CableType.DSToSplitter96Cores:
-        return length * CostParameters.fiber_96core_per_km
+        return length * cost_arameters.fiber_96core_per_km
     elif cable_type == CableType.SpliterToHouseDropCable:
-        return length * CostParameters.fiber_drop_pair_per_km
+        return length * cost_arameters.fiber_drop_pair_per_km
 
 
-def get_cost_for_cable_material(self, cable_type: CableType, length: float):
+def get_cost_for_cable_material(cable_type: CableType, length: float, cost_arameters: CostParameters):
     if cable_type == CableType.CoreToDS:
-        return length * CostParameters.fiber_ds_to_core_per_km
+        return length * cost_arameters.fiber_ds_to_core_per_km
     elif cable_type == CableType.DSToSplitter96Cores:
-        return length * CostParameters.fiber_96core_per_km
-    elif cable_type == CableType.SpliterToHouseDropCable:
-        return length * CostParameters.fiber_drop_pair_per_km
+        return length * cost_arameters.fiber_96core_per_km
+    elif cable_type == CableType.SplitterToHouseDropCable:
+        return length * cost_arameters.fiber_drop_pair_per_km
 
 
 class DetailedCost:
