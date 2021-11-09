@@ -424,7 +424,7 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
             trench_ids.append(trench_id)
             all_trench_ids.add(trench_id)
             trench = trench_look_up[trench_look_up.index == trench_id]
-            length += trench.length
+            length += trench.iloc[0].length
             fiber_graph.add_edge(pair[0], pair[1], 1, name="Fiber", cable=True,
                                  cable_type=CableType.SplitterToHouseDropCable)
             sub_cable_dict.append({"u": pair[0], "v": pair[1], "key": 1, "name": "Fiber", "cable": True,
@@ -551,7 +551,7 @@ def _get_ds_cable_network(fiber_network: FiberNetwork(), fiber_graph: networkx.M
             trench_ids.append(trench_id)
             all_trench_ids.add(trench_id)
             trench = trench_look_up[trench_look_up.index == trench_id]
-            length += trench.length
+            length += trench.iloc[0].length
             fiber_graph.add_edge(pair[0], pair[1], 1, name="DS_Fiber", cable=True,
                                  cable_type=CableType.DSToSplitter96Cores)
             sub_cable_dict.append({"u": pair[0], "v": pair[1], "key": 2, "name": "DS_Fiber", "cable": True,
