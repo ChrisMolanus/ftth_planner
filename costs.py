@@ -4,10 +4,10 @@ from typing import Set, Dict, List, Any
 import pandas as pd
 
 from cost_parameters import CostParameters
-from fibers import FiberNetwork, CableType, EquipmentType
+from fibers import FiberNetwork, CableType, EquipmentType, FiberCable, DecentralLocation, Splitter, StreetCabinet, ONT
 
 # import ruamel.yaml
-from trenches2 import TrenchType
+from trenches2 import TrenchType, TrenchCorner, Trench
 
 
 class DetailedCostLine:
@@ -97,14 +97,20 @@ class DetailedCost:
 def get_costs(fiber_network: FiberNetwork, cost_parameters: CostParameters) -> DetailedCost:
     costs = DetailedCost(fiber_network, cost_parameters)
     # Collect the trenches that we will have to dig and the lengths of the cables we will use
+    trenches_df = fiber_network.trenches
+    mi = pd.MultiIndex.from_frame(trenches_df[["min_node_id", "max_node_id"]])
+    trench_look_up = trenches_df
+    trench_look_up.index = mi
+
     used_trench_ids: Set[int] = set()
     for t in CableType:
         costs.fiber_cables_material[t] = DetailedCostLine(0.0, "km", 0.0)
         costs.fiber_cables_installation[t] = DetailedCostLine(0.0, "km", 0.0)
-    for fiber in fiber_network.fibers.values():
-        used_trench_ids = used_trench_ids.union(set(fiber.trench_osmids))
-        costs.fiber_cables_material[fiber.cable_type].quantity += fiber.length
-        costs.fiber_cables_installation[fiber.cable_type].quantity += fiber.length
+    for fibers in fiber_network.fibers.values():
+        for fiber in fibers:
+            trench_node_ids = used_trench_ids.union(set(fiber.trench_node_ids))
+            costs.fiber_cables_material[fiber.cable_type].quantity += fiber.length
+            costs.fiber_cables_installation[fiber.cable_type].quantity += fiber.length
 
     # For the trenches that we have to dig get the lengths per Type since they have different costs
     for t in TrenchType:
@@ -114,15 +120,122 @@ def get_costs(fiber_network: FiberNetwork, cost_parameters: CostParameters) -> D
         costs.digging_labour[trench.type].quantity += trench['length']
 
     # Account for the equipment
-    for quantity, equipmentType in fiber_network.equipment:
-        costs.equipment_material[equipmentType] = DetailedCostLine(quantity, "units", 0.0)
-        costs.equipment_installation[equipmentType] = DetailedCostLine(quantity, "units", 0.0)
+    for equipmentType, equipments in fiber_network.equipment.items():
+        costs.equipment_material[equipmentType] = DetailedCostLine(len(equipments), "units", 0.0)
+        costs.equipment_installation[equipmentType] = DetailedCostLine(len(equipments), "units", 0.0)
 
     # Calculate costs
     for t in CableType:
-        costs.fiber_cables_material[t].total_cost = get_cost_for_cable_material(
-            t, costs.fiber_cables_material[t].quantity)
-        costs.fiber_cables_installation[t].total_cost = get_cost_for_cable_material(
-            t, costs.fiber_cables_installation[t].quantity)
+        costs.fiber_cables_material[t].total_cost = get_cost_for_cable_material(cable_type=t,
+            length=costs.fiber_cables_material[t].quantity, cost_arameters=cost_parameters)
+        costs.fiber_cables_installation[t].total_cost = get_cost_for_cable_material(cable_type=t,
+            length=costs.fiber_cables_installation[t].quantity, cost_arameters=cost_parameters)
 
     return costs
+
+if __name__ == "__main__":
+    fake_network = FiberNetwork()
+    # self.fibers: Dict[CableType, List[FiberCable]] = dict()
+    # self.equipment: Dict[EquipmentType, List[Equipment]] = dict()
+    # self.trenches: pd.DataFrame = None
+    fake_network.fibers[CableType.CoreToDS] = list()
+    fake_network.fibers[CableType.CoreToDS].append(
+        FiberCable(trench_node_ids=[1, 2, 3], length=6, cable_type=CableType.CoreToDS))
+    fake_network.fibers[CableType.CoreToDS].append(
+        FiberCable(trench_node_ids=[1, 15, 16], length=6, cable_type=CableType.CoreToDS))
+
+    # hugo
+    trenches: List[Trench] = list()
+    trenches.append(Trench(u_for_edge=1, v_for_edge=2, name="", length=1.0, street_names=set()))
+    trenches.append(Trench(u_for_edge=2, v_for_edge=3, name="", length=1.0, street_names=set()))
+    trenches.append(Trench(u_for_edge=1, v_for_edge=15, name="", length=1.0, street_names=set()))
+    trenches.append(Trench(u_for_edge=15, v_for_edge=16, name="", length=1.0, street_names=set()))
+
+    fake_network.trenches = pd.DataFrame(trenches)
+
+
+
+    fake_network.fibers[CableType.DSToSplitter96Cores] = list()
+    fake_network.fibers[CableType.DSToSplitter96Cores].append(
+        FiberCable(trench_node_ids=[16, 21, 22, 23, ], length=6, cable_type=CableType.DSToSplitter96Cores))
+    fake_network.fibers[CableType.DSToSplitter96Cores].append(
+        FiberCable(trench_node_ids=[16, 24, 25, 26,], length=6, cable_type=CableType.DSToSplitter96Cores))
+    fake_network.fibers[CableType.DSToSplitter96Cores].append(
+        FiberCable(trench_node_ids=[3, 31, 32, 33, ], length=6, cable_type=CableType.DSToSplitter96Cores))
+    fake_network.fibers[CableType.DSToSplitter96Cores].append(
+        FiberCable(trench_node_ids=[3, 34, 35, 36], length=6, cable_type=CableType.DSToSplitter96Cores))
+    fake_network.equipment[EquipmentType.StreetCabinet] = [StreetCabinet(trench_corner=23, cabinet_id=1),
+                                                           StreetCabinet(trench_corner=26, cabinet_id=2),
+                                                           StreetCabinet(trench_corner=33, cabinet_id=3),
+                                                           StreetCabinet(trench_corner=36, cabinet_id=4),]
+
+    fake_network.equipment[EquipmentType.DecentralLocation] = [DecentralLocation(trench_corner=
+                                                                                 TrenchCorner(trench_count=1,
+                                                                                              u_node_id=100,
+                                                                                              street_ids=set(),
+                                                                                              node_for_adding=3,
+                                                                                              x=1,
+                                                                                              y=1),
+                                                                                 street_cabinets=[fake_network.equipment[EquipmentType.StreetCabinet][0],
+                                                                                                  fake_network.equipment[EquipmentType.StreetCabinet][1]]),
+                                                               DecentralLocation(trench_corner=
+                                                                                 TrenchCorner(trench_count=1,
+                                                                                              u_node_id=200,
+                                                                                              street_ids=set(),
+                                                                                              node_for_adding=16,
+                                                                                              x=1,
+                                                                                              y=1),
+                                                                                 street_cabinets=[fake_network.equipment[EquipmentType.StreetCabinet][2],
+                                                                                                  fake_network.equipment[EquipmentType.StreetCabinet][3]])
+                                                               ]
+
+    fake_network.equipment[EquipmentType.Splitter] = [Splitter(street_cabinet=fake_network.equipment[EquipmentType.StreetCabinet][0]),
+                                                      Splitter(street_cabinet=fake_network.equipment[EquipmentType.StreetCabinet][1]),
+                                                      Splitter(street_cabinet=fake_network.equipment[EquipmentType.StreetCabinet][2]),
+                                                      Splitter(street_cabinet=fake_network.equipment[EquipmentType.StreetCabinet][3]),]
+
+    fake_network.fibers[CableType.SplitterToHouseDropCable] = list()
+    fake_network.fibers[CableType.SplitterToHouseDropCable].append(
+        FiberCable(trench_node_ids=[23,41, 42,], length=6, cable_type=CableType.SplitterToHouseDropCable))
+    fake_network.fibers[CableType.SplitterToHouseDropCable].append(
+        FiberCable(trench_node_ids=[23, 43, 44,], length=6, cable_type=CableType.SplitterToHouseDropCable))
+    fake_network.fibers[CableType.SplitterToHouseDropCable].append(
+        FiberCable(trench_node_ids=[26, 45, 46,], length=6, cable_type=CableType.SplitterToHouseDropCable))
+    fake_network.fibers[CableType.SplitterToHouseDropCable].append(
+        FiberCable(trench_node_ids=[26, 47, 48,], length=6, cable_type=CableType.SplitterToHouseDropCable))
+    fake_network.fibers[CableType.SplitterToHouseDropCable].append(
+        FiberCable(trench_node_ids=[33, 49, 50,], length=6, cable_type=CableType.SplitterToHouseDropCable))
+    fake_network.fibers[CableType.SplitterToHouseDropCable].append(
+        FiberCable(trench_node_ids=[33, 51, 52,], length=6, cable_type=CableType.SplitterToHouseDropCable))
+    fake_network.fibers[CableType.SplitterToHouseDropCable].append(
+        FiberCable(trench_node_ids=[36, 53, 54,], length=6, cable_type=CableType.SplitterToHouseDropCable))
+    fake_network.fibers[CableType.SplitterToHouseDropCable].append(
+        FiberCable(trench_node_ids=[36, 55, 56], length=6, cable_type=CableType.SplitterToHouseDropCable))
+    fake_network.equipment[EquipmentType.ONT] = [ONT(building_index="way (1)",
+                                                     splitter=fake_network.equipment[EquipmentType.Splitter][0]),
+                                                 ONT(building_index="way (2)",
+                                                     splitter=fake_network.equipment[EquipmentType.Splitter][0]),
+                                                 ONT(building_index="way (3)",
+                                                     splitter=fake_network.equipment[EquipmentType.Splitter][1]),
+                                                 ONT(building_index="way (4)",
+                                                     splitter=fake_network.equipment[EquipmentType.Splitter][1]),
+                                                 ONT(building_index="way (5)",
+                                                     splitter=fake_network.equipment[EquipmentType.Splitter][2]),
+                                                 ONT(building_index="way (6)",
+                                                     splitter=fake_network.equipment[EquipmentType.Splitter][2]),
+                                                 ONT(building_index="way (7)",
+                                                     splitter=fake_network.equipment[EquipmentType.Splitter][3]),
+                                                 ONT(building_index="way (8)",
+                                                     splitter=fake_network.equipment[EquipmentType.Splitter][3]),
+                                                 ]
+
+
+    fake_network.trenches["min_node_id"] = fake_network.trenches[['u_for_edge', 'v_for_edge']].min(axis=1)
+    fake_network.trenches["max_node_id"] = fake_network.trenches[['u_for_edge', 'v_for_edge']].max(axis=1)
+    mi = pd.MultiIndex.from_frame(fake_network.trenches[["min_node_id", "max_node_id"]])
+    fake_network.trenches.index = mi
+
+    cost_parameters = CostParameters()
+    costs = get_costs(fake_network, cost_parameters)
+    print(costs.get_materials_dataframe())
+    print(costs.get_materials_dataframe())
