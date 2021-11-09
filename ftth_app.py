@@ -86,8 +86,8 @@ g_box = ox.graph_from_bbox(*box,
                            truncate_by_edge=True)
 building_gdf = ox.geometries_from_bbox(*box, tags={'building': True})
 trench_network = get_trench_network(g_box, building_gdf)
-import pickle
-pickle.dump(trench_network, open("trench_network.p", "wb"))
+#import pickle
+#pickle.dump(trench_network, open("trench_network.p", "wb"))
 
 trench_network_graph = add_trenches_to_network(trench_network, g_box)
 
