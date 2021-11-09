@@ -698,7 +698,7 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
         street_name = building['addr:street']
         centroid = building['geometry'].centroid
         distance = float('inf')
-        building_centriod_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0], 'building_index': building_index}
+        building_centroid_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0], 'building_index': building_index}
         # There might be buildings in the box that are on roads that are not in the box, geo fencing problem
         # or just buildings with no address
         if street_name in street_trenches and len(street_trenches[street_name]) > 0:
@@ -710,17 +710,17 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
                 corner_v: TrenchCorner = corner_by_id[trench['v_for_edge']]
                 if 'geometry' not in trenches[trench_index]:
                     # Get the intersection point between the road trench and a perpendicular line of the building
-                    perpendicular_line = get_perpendicular_line(corner_u, corner_v, building_centriod_node)
+                    perpendicular_line = get_perpendicular_line(corner_u, corner_v, building_centroid_node)
                     projected = get_intersection_point2(perpendicular_line, (corner_u, corner_v))
                     # Extra check to make sure we are not doing something wrong, might be a bug in the code
                     if is_between2(corner_u, corner_v, projected):
-                        new_distance = node_distance(projected, building_centriod_node)
+                        new_distance = node_distance(projected, building_centroid_node)
                         # Check if this trench is the closest one so far
                         if new_distance < distance:
                             new_v_node = projected
                             distance = new_distance
                             closest_trench = trench_index
-                            closest_trench_info = {'building_centroid_node': building_centriod_node,
+                            closest_trench_info = {'building_centroid_node': building_centroid_node,
                                                    'ref_new_v_node': new_v_node,
                                                    'closest_trench': closest_trench,
                                                    'geometry': False,
@@ -739,17 +739,17 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
                             last_node = {'x': sub_x, 'y': sub_y}
                         else:
                             sub_u_node = {'x': sub_x, 'y': sub_y}
-                            perpendicular_line = get_perpendicular_line(last_node, sub_u_node, building_centriod_node)
+                            perpendicular_line = get_perpendicular_line(last_node, sub_u_node, building_centroid_node)
                             projected = get_intersection_point2(perpendicular_line, (last_node, sub_u_node))
                             if is_between2(last_node, sub_u_node, projected):
-                                new_distance = node_distance(projected, building_centriod_node)
+                                new_distance = node_distance(projected, building_centroid_node)
                                 last_node = sub_u_node
                                 if new_distance < distance:
                                     new_v_node = projected
                                     distance = new_distance
                                     shortest_i = segment_index
                                     closest_trench = trench_index
-                                    closest_trench_info = {'building_centroid_node': building_centriod_node,
+                                    closest_trench_info = {'building_centroid_node': building_centroid_node,
                                                            'ref_new_v_node': new_v_node,
                                                            'closest_trench': closest_trench,
                                                            'geometry': True,
