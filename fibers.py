@@ -635,7 +635,7 @@ def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up: Dict[int, Str
                             node_size=0, edge_linewidth=2.5, edge_alpha=0.8,
                             show=False, close=False)
     ox.plot_footprints(building_gdf, ax=ax, color="burlywood", alpha=0.6)
-    ax.scatter(cs_lookup.x, cs_lookup.y, s=120, color='red')
+    # ax.scatter(x=round(trench_corner_gdf['x'].max(), 6), y=round(trench_corner_gdf['y'].min(), 6), s=120, color='red')
     ax.scatter(cabinet_df.x, cabinet_df.y, s=30, color="m")
     ax.scatter(ds_df.x, ds_df.y, s=70, color="yellow")
 
