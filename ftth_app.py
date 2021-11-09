@@ -16,8 +16,8 @@ from trenches2 import get_trench_network, add_trenches_to_network
 #### Page setup
 
 # Sidebar with coordinate/placename inputs
-north_field, south_field  = st.sidebar.columns(2)
-east_field, west_field = st.sidebar.columns(2)
+north_field, south_field = st.sidebar.beta_columns(2)
+east_field, west_field = st.sidebar.beta_columns(2)
 
 # 50.843217, 50.833949, 4.439903, 4.461962
 # 1,3 51.98446, 5.64113
@@ -28,7 +28,7 @@ east_field, west_field = st.sidebar.columns(2)
 #### Header section and logo
 
 # Write a page title
-col1, col2 = st.columns((2,1))
+col1, col2 = st.beta_columns((2, 1))
 col1.title('Fiber To The Home Network')
 
 #Insert a picture next to title
