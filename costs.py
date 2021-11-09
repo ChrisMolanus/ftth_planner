@@ -17,22 +17,32 @@ class DetailedCostLine:
         self.quantity = quantity
 
 
-def get_cost_for_cable_installation(cable_type: CableType, length: float, cost_arameters: CostParameters):
+def get_cost_for_cable_installation(cable_type: CableType, length: float, cost_parameters: CostParameters):
     if cable_type == CableType.CoreToDS:
-        return length * cost_arameters.fiber_ds_to_core_per_km
+        return length * cost_parameters.fiber_ds_to_core_per_km
     elif cable_type == CableType.DSToSplitter96Cores:
-        return length * cost_arameters.fiber_96core_per_km
+        return length * cost_parameters.fiber_96core_per_km
     elif cable_type == CableType.SpliterToHouseDropCable:
-        return length * cost_arameters.fiber_drop_pair_per_km
+        return length * cost_parameters.fiber_drop_pair_per_km
+
+def get_cost_for_equipment(equipment_type: EquipmentType, quantity: int, cost_parameters: CostParameters):
+    if equipment_type == EquipmentType.StreetCabinet:
+        return quantity * cost_parameters.street_cabinet
+    elif equipment_type == EquipmentType.Splitter:
+        return quantity * cost_parameters.splitter
+    elif equipment_type == EquipmentType.DecentralLocation:
+        return quantity * cost_parameters.placement_of_ds
+    elif equipment_type == EquipmentType.ONT:
+        return quantity * cost_parameters.placement_of_ont
 
 
-def get_cost_for_cable_material(cable_type: CableType, length: float, cost_arameters: CostParameters):
+def get_cost_for_cable_material(cable_type: CableType, length: float, cost_parameters: CostParameters):
     if cable_type == CableType.CoreToDS:
-        return length * cost_arameters.fiber_ds_to_core_per_km
+        return length * cost_parameters.fiber_ds_to_core_per_km
     elif cable_type == CableType.DSToSplitter96Cores:
-        return length * cost_arameters.fiber_96core_per_km
+        return length * cost_parameters.fiber_96core_per_km
     elif cable_type == CableType.SplitterToHouseDropCable:
-        return length * cost_arameters.fiber_drop_pair_per_km
+        return length * cost_parameters.fiber_drop_pair_per_km
 
 
 class DetailedCost:
@@ -124,13 +134,25 @@ def get_costs(fiber_network: FiberNetwork, cost_parameters: CostParameters) -> D
         costs.equipment_material[equipmentType] = DetailedCostLine(len(equipments), "units", 0.0)
         costs.equipment_installation[equipmentType] = DetailedCostLine(len(equipments), "units", 0.0)
 
-    # Calculate costs
+    # Calculate Cable costs
     for t in CableType:
         costs.fiber_cables_material[t].total_cost = get_cost_for_cable_material(cable_type=t,
-            length=costs.fiber_cables_material[t].quantity, cost_arameters=cost_parameters)
+            length=costs.fiber_cables_material[t].quantity, cost_parameters=cost_parameters)
         costs.fiber_cables_installation[t].total_cost = get_cost_for_cable_material(cable_type=t,
-            length=costs.fiber_cables_installation[t].quantity, cost_arameters=cost_parameters)
-
+            length=costs.fiber_cables_installation[t].quantity, cost_parameters=cost_parameters)
+        
+    # Calculate Equipment costs
+    for t in EquipmentType:
+        if t in costs.equipment_material:
+            costs.equipment_material[t].total_cost = get_cost_for_equipment(equipment_type=t,
+                                                                        quantity=costs.equipment_material[
+                                                                            t].quantity,
+                                                                        cost_parameters=cost_parameters)
+        if t in costs.equipment_installation:
+            costs.equipment_installation[t].total_cost = get_cost_for_equipment(equipment_type=t,
+                                                                        quantity=costs.equipment_installation[
+                                                                            t].quantity,
+                                                                        cost_parameters=cost_parameters)
     return costs
 
 if __name__ == "__main__":
@@ -152,8 +174,6 @@ if __name__ == "__main__":
     trenches.append(Trench(u_for_edge=15, v_for_edge=16, name="", length=1.0, street_names=set()))
 
     fake_network.trenches = pd.DataFrame(trenches)
-
-
 
     fake_network.fibers[CableType.DSToSplitter96Cores] = list()
     fake_network.fibers[CableType.DSToSplitter96Cores].append(
