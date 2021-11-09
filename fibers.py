@@ -19,7 +19,7 @@ from k_means_constrained import KMeansConstrained
 from scipy.spatial import cKDTree
 from shapely.geometry import Point, LineString
 
-from costs import CostParameters
+from cost_parameters import CostParameters
 from trenches2 import TrenchNetwork, TrenchCorner, add_trenches_to_network, get_trench_network
 
 
