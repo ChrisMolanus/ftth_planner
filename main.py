@@ -44,10 +44,10 @@ fiber_network, fig = get_fiber_network(trench_network, cost_parameters, building
 
 detailed_cost = get_costs(fiber_network, cost_parameters)
 
-detailed_report = get_detailed_report(detailed_cost, building_gdf)
+#detailed_report = get_detailed_report(detailed_cost, building_gdf)
 
-if detailed_report.plot is not None:
-    detailed_report.plot.show()
+# if detailed_report.plot is not None:
+#     detailed_report.plot.show()
 
 
 print("--- The job took %s seconds ---" % (time.time() - start_time))
