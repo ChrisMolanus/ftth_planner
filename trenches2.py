@@ -11,9 +11,11 @@ import matplotlib.pyplot as plt
 import math
 
 import pandas as pd
+import pyproj
 from shapely.geometry import LineString
 
 distance_from_center_of_road = 0.0001
+geod = pyproj.Geod(ellps='WGS84')
 
 
 def point_distance_from_line(line: Tuple[dict, dict], point: dict) -> float:
@@ -34,7 +36,8 @@ def node_distance(node1: dict, node2: dict) -> float:
     :param node2: A point
     :return: The distance between the two points
     """
-    return (((node2['x'] - node1['x']) ** 2) + ((node2['y'] - node1['y']) ** 2)) ** 0.5
+    azimuth1, azimuth2, distance = geod.inv(node1['y'], node1['x'], node2['y'], node2['x'])
+    return distance
 
 
 def angle(vector1: Tuple[float, float], vector2: Tuple[float, float]) -> float:

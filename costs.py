@@ -121,6 +121,10 @@ def get_costs(fiber_network: FiberNetwork, cost_parameters: CostParameters) -> D
             trench_node_ids = used_trench_ids.union(set(fiber.trench_node_ids))
             costs.fiber_cables_material[fiber.cable_type].quantity += fiber.length
             costs.fiber_cables_installation[fiber.cable_type].quantity += fiber.length
+    for t in costs.fiber_cables_material.keys():
+        costs.fiber_cables_material[t].quantity = round(costs.fiber_cables_material[t].quantity / 1000, 2)
+    for t in costs.fiber_cables_installation.keys():
+        costs.fiber_cables_installation[t].quantity = round(costs.fiber_cables_installation[t].quantity / 1000, 2)
 
     # For the trenches that we have to dig get the lengths per Type since they have different costs
     for t in TrenchType:
@@ -128,6 +132,8 @@ def get_costs(fiber_network: FiberNetwork, cost_parameters: CostParameters) -> D
     for trench_id in used_trench_ids:
         trench = fiber_network.trenches[trench_id]
         costs.digging_labour[trench.type].quantity += trench['length']
+    for t in costs.digging_labour.keys():
+        costs.digging_labour[t].quantity = round(costs.digging_labour[t].quantity / 1000, 2)
 
     # Account for the equipment
     for equipmentType, equipments in fiber_network.equipment.items():
