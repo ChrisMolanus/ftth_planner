@@ -518,14 +518,14 @@ def _get_ds_cable_network(fiber_network: FiberNetwork(), fiber_graph: networkx.M
     """
     Create a last mile optical network which is cables form splitters to buildings
     :param building_trenches_df: The GeoPandas Dataframe of buildings with cabinet IDs
-    :param g_box: The OSMX graph
+    :param fiber_graph: The OSMX graph
     :param trench_corner_gdf: The trench corner DataFrame
     :param trenches_df: A Trench DataFrame
     :param trenches_gdf: A Trench Geo DataFrame
     :param ds_look_up: The Decentralized Locations
     :return: A Fiber Network object and a Fiber graph as a NetworkX graph
     """
-    ds_fiber_cables = _find_shortest_path_to_cabinets(ds_look_up, g_box, trench_corner_gdf, trenches_gdf)
+    ds_fiber_cables = _find_shortest_path_to_cabinets(ds_look_up, fiber_graph, trench_corner_gdf, trenches_gdf)
 
     trenches_df["min_node_id"] = trenches_df[['u', 'v']].min(axis=1)
     trenches_df["max_node_id"] = trenches_df[['u', 'v']].max(axis=1)
