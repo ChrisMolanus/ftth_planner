@@ -241,9 +241,9 @@ def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParame
                                                        trenches_gdf,
                                                        ds_look_up)
 
-    plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up, ds_look_up)
+    fig = plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up, ds_look_up)
 
-    return fiber_network
+    return fiber_network, fig
 
 
 def ckdnearest(gdA: gpd.GeoDataFrame, gdB: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -638,6 +638,8 @@ def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up: Dict[int, Str
     # ax.scatter(x=round(trench_corner_gdf['x'].max(), 6), y=round(trench_corner_gdf['y'].min(), 6), s=120, color='red')
     ax.scatter(cabinet_df.x, cabinet_df.y, s=30, color="m")
     ax.scatter(ds_df.x, ds_df.y, s=70, color="yellow")
+
+    return(fig)
 
 
 if __name__ == "__main__":
