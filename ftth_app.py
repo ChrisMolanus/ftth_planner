@@ -8,7 +8,7 @@ import osmnx as ox
 import matplotlib.pyplot as plt
 
 from cost_parameters import CostParameters
-from costs import DetailedCost
+from costs import DetailedCost, get_costs
 from fibers import get_fiber_network, EquipmentType, plot_fiber_network
 from report import get_detailed_report
 from trenches2 import get_trench_network, add_trenches_to_network
@@ -95,12 +95,7 @@ trench_network_graph = add_trenches_to_network(trench_network, g_box)
 cost_parameters = CostParameters()
 fiber_network, fig = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
 
-detailed_cost = DetailedCost(fiber_network, cost_parameters)
-
-detailed_report = get_detailed_report(detailed_cost, building_gdf)
-
-if detailed_report.plot is not None:
-    detailed_report.plot.show()
+detailed_cost = get_costs(fiber_network, cost_parameters)
 
 # TODO: convert detailed_report to PDF
 
