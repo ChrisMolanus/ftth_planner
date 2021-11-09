@@ -1,5 +1,7 @@
 import sys
-from typing import Set, Dict
+from typing import Set, Dict, List, Any
+
+import pandas as pd
 
 from cost_parameters import CostParameters
 from fibers import FiberNetwork, CableType, EquipmentType
@@ -50,6 +52,46 @@ class DetailedCost:
         # # Installation costs
         self.fiber_cables_installation: Dict[CableType, DetailedCostLine] = dict()
         self.equipment_installation: Dict[EquipmentType, DetailedCostLine] = dict()
+
+    def get_materials_dataframe(self):
+        table_rows: List[Dict[str, Any]] = list()
+
+        for cable_type, detailed_costLine in self.fiber_cables_material.items():
+            table_rows.append({"Type": str(cable_type),
+                               "Quantity": detailed_costLine.quantity,
+                               "Quantity units": detailed_costLine.quantity_unit,
+                               "Total Cost": detailed_costLine.total_cost})
+
+        for equipment_type, detailed_costLine in self.equipment_material.items():
+            table_rows.append({"Type": str(equipment_type),
+                               "Quantity": detailed_costLine.quantity,
+                               "Quantity units": detailed_costLine.quantity_unit,
+                               "Total Cost": detailed_costLine.total_cost})
+
+        return pd.DataFrame(table_rows)
+
+    def get_labor_dataframe(self):
+        table_rows: List[Dict[str, Any]] = list()
+
+        for trench_type, detailed_costLine in self.digging_labour.items():
+            table_rows.append({"Type": str(trench_type),
+                               "Quantity": detailed_costLine.quantity,
+                               "Quantity units": detailed_costLine.quantity_unit,
+                               "Total Cost": detailed_costLine.total_cost})
+
+        for cable_type, detailed_costLine in self.fiber_cables_installation.items():
+            table_rows.append({"Type": str(cable_type),
+                               "Quantity": detailed_costLine.quantity,
+                               "Quantity units": detailed_costLine.quantity_unit,
+                               "Total Cost": detailed_costLine.total_cost})
+
+        for equipment_type, detailed_costLine in self.equipment_installation.items():
+            table_rows.append({"Type": str(equipment_type),
+                               "Quantity": detailed_costLine.quantity,
+                               "Quantity units": detailed_costLine.quantity_unit,
+                               "Total Cost": detailed_costLine.total_cost})
+
+        return pd.DataFrame(table_rows)
 
 
 def get_costs(fiber_network: FiberNetwork, cost_parameters: CostParameters) -> DetailedCost:
