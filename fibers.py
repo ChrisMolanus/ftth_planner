@@ -17,7 +17,7 @@ from sklearn.preprocessing import StandardScaler
 import geopandas as gpd
 from k_means_constrained import KMeansConstrained
 from scipy.spatial import cKDTree
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point, Polygon, LineString
 
 from costs import CostParameters
 from trenches2 import TrenchNetwork, TrenchCorner, add_trenches_to_network, get_trench_network
@@ -126,6 +126,20 @@ class DecentralLocation(Equipment):
         super(DecentralLocation, self).__init__(EquipmentType.DecentralLocation)
         self.street_cabinets = street_cabinets
         self.trench_corner = trench_corner
+
+
+def _get_cs_location(trench_corner_gdf, ds_look_up: Dict[int, StreetCabinet]) -> Dict[int, StreetCabinet]:
+    """
+    Create a Central Office Location
+    :param trench_network: The Trench Network
+    :param ds_look_up
+    """
+
+    cs_gdf = trench_corner_gdf[trench_corner_gdf.x.max(), trench_corner_gdf.y.min()]
+
+
+
+    return ds_look_up
 
 
 def _get_ds_locations(trench_network: TrenchNetwork, cabinet_look_up: Dict[int, StreetCabinet],
@@ -553,7 +567,42 @@ def _get_ds_cable_network(fiber_network: FiberNetwork(), fiber_graph: networkx.M
     return fiber_network, fiber_graph
 
 
-def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up: Dict[int, StreetCabinet], ds_look_up):
+def _find_shortest_path_to_cs(cs_look_up, g_box: networkx.MultiGraph, trench_corner_gdf: gpd.GeoDataFrame,
+                              trenches_gdf: gpd.GeoDataFrame) -> List[Dict[str, Any]]:
+    """
+    Find the shortest path from each decentrale to its associated central location
+    :param ds_look_up: The Decentral Locations
+    :param g_box: The OSMX graph
+    :param trench_corner_gdf:
+    :param trenches_gdf:
+    :return: A list of last mile fiber routes
+    """
+    # Make a graph so we can find teh shortest paths
+    graph = ox.graph_from_gdfs(trench_corner_gdf, trenches_gdf, graph_attrs=g_box.graph)
+    # make sure to convert to undirected graph
+    graph = graph.to_undirected()
+    cs_fiber_cables = list()
+    for index, ds in ds_look_up.items():
+        ds_corner_id = ds.trench_corner['node_for_adding']
+        for sc_index in ds.street_cabinets:
+            street_cabinet_id = sc_index.cabinet_id
+            street_cabinet_corner_id = sc_index.trench_corner
+            cabinet_corner_id = street_cabinet_corner_id['node_for_adding']
+            try:
+                s_path = nx.algorithms.shortest_paths.shortest_path(graph, source=cabinet_corner_id,
+                                                                    target=ds_corner_id)
+                ds_fiber_cables.append(
+                    {"cabinet_corner_id": cabinet_corner_id, "ds_id": ds, "ds_corner_id": ds_corner_id,
+                     "shortest_path": s_path, "decentral_locations": ds, 'street_cabinet_id': street_cabinet_id})
+            except networkx.exception.NetworkXNoPath:
+                pass
+                # print(f"No drop cable path could be found for building_index {building_index}")
+
+    return cs_fiber_cables
+
+
+def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up: Dict[int, StreetCabinet], ds_look_up,
+                       cs_lookup):
     cabinet_list = list()
     for cluster_id, d in cabinet_look_up.items():
         node = d.trench_corner
@@ -585,9 +634,10 @@ def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up: Dict[int, Str
     fig, ax = ox.plot_graph(fiber_graph, bgcolor='white', edge_color=ec,
                             node_size=0, edge_linewidth=2.5, edge_alpha=0.8,
                             show=False, close=False)
-    ox.plot_footprints(building_gdf, ax=ax, color="tan", alpha=0.6)
+    ox.plot_footprints(building_gdf, ax=ax, color="burlywood", alpha=0.6)
+    ax.scatter(cs_lookup.x, cs_lookup.y, s=120, color='red')
     ax.scatter(cabinet_df.x, cabinet_df.y, s=30, color="m")
-    ax.scatter(ds_df.x, ds_df.y, s=100, color="yellow")
+    ax.scatter(ds_df.x, ds_df.y, s=70, color="yellow")
 
 
 if __name__ == "__main__":
