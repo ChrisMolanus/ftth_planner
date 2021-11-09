@@ -53,10 +53,12 @@ st.pyplot(fig)
 st.header('Cost data \n')
 st.subheader('Material Costs \n')
 materials_df = detailed_cost.get_materials_dataframe()
+materials_df.set_index('Type', inplace=True)
 st.dataframe(materials_df)
 
 st.subheader('Labour Costs \n')
 labor_df = detailed_cost.get_labor_dataframe()
+labor_df.set_index('Type', inplace=True)
 st.dataframe(labor_df)
 
 
