@@ -67,13 +67,13 @@ class DetailedCost:
         table_rows: List[Dict[str, Any]] = list()
 
         for cable_type, detailed_costLine in self.fiber_cables_material.items():
-            table_rows.append({"Type": str(cable_type),
+            table_rows.append({"Type": str(cable_type.value),
                                "Quantity": detailed_costLine.quantity,
                                "Quantity units": detailed_costLine.quantity_unit,
                                "Total Cost": detailed_costLine.total_cost})
 
         for equipment_type, detailed_costLine in self.equipment_material.items():
-            table_rows.append({"Type": str(equipment_type),
+            table_rows.append({"Type": str(equipment_type.value),
                                "Quantity": detailed_costLine.quantity,
                                "Quantity units": detailed_costLine.quantity_unit,
                                "Total Cost": detailed_costLine.total_cost})
@@ -84,19 +84,19 @@ class DetailedCost:
         table_rows: List[Dict[str, Any]] = list()
 
         for trench_type, detailed_costLine in self.digging_labour.items():
-            table_rows.append({"Type": str(trench_type),
+            table_rows.append({"Type": str(trench_type.value),
                                "Quantity": detailed_costLine.quantity,
                                "Quantity units": detailed_costLine.quantity_unit,
                                "Total Cost": detailed_costLine.total_cost})
 
         for cable_type, detailed_costLine in self.fiber_cables_installation.items():
-            table_rows.append({"Type": str(cable_type),
+            table_rows.append({"Type": str(cable_type.value),
                                "Quantity": detailed_costLine.quantity,
                                "Quantity units": detailed_costLine.quantity_unit,
                                "Total Cost": detailed_costLine.total_cost})
 
         for equipment_type, detailed_costLine in self.equipment_installation.items():
-            table_rows.append({"Type": str(equipment_type),
+            table_rows.append({"Type": str(equipment_type.value),
                                "Quantity": detailed_costLine.quantity,
                                "Quantity units": detailed_costLine.quantity_unit,
                                "Total Cost": detailed_costLine.total_cost})

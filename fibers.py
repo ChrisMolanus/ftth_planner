@@ -24,17 +24,16 @@ from trenches2 import TrenchNetwork, TrenchCorner, add_trenches_to_network, get_
 
 
 class CableType(Enum):
-    CoreToDS = "CoreToDS"
+    CoreToDS = "Core To DS"
     DSToSplitter96Cores = "DSToSplitter96Cores"
-    SplitterToHouseDropCable = "SpliterToHouseDropCable"
+    SplitterToHouseDropCable = "Splitter To House Drop Cable"
 
 
 class EquipmentType(Enum):
     ONT = "ONT"
     Splitter = "Splitter"
-    StreetCabinet = "StreetCabinet"
-    DecentralLocation = "DecentralLocation"
-    CentralLocation = "CentralLocation"
+    StreetCabinet = "Street Cabinet"
+    DecentralLocation = "Decentral Location"
     POP = "POP"
 
 

@@ -131,9 +131,9 @@ class TrenchCorner(dict):
 
 
 class TrenchType(Enum):
-    Road_side = 1
-    Road_crossing = 2
-    Building = 3
+    Road_side = "Road-Side Trench"
+    Road_crossing = "Road-Crossing Trench"
+    Building = "To Building Trench"
 
 
 class Trench(dict):
