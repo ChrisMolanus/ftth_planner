@@ -19,6 +19,7 @@ class CostParameters:
         self.ds: float = 1
         self.placement_of_ont: float = 1
         self.ont: float = 1
+        self.splitter: float = 1
 
     def dump_to_file(self):
         yaml = ruamel.yaml.YAML()
