@@ -602,7 +602,7 @@ def _find_shortest_path_to_cs(cs_look_up, g_box: networkx.MultiGraph, trench_cor
 
 
 def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up: Dict[int, StreetCabinet], ds_look_up,
-                       cs_lookup):
+                       cs_lookup = None):
     cabinet_list = list()
     for cluster_id, d in cabinet_look_up.items():
         node = d.trench_corner
