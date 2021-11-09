@@ -138,7 +138,7 @@ class TrenchType(Enum):
 
 class Trench(dict):
     def __init__(self, u_for_edge: int, v_for_edge: int, name: str, length: float, street_names: Set[str], trench: bool = True,
-                 trench_crossing: bool = False, geometry: LineString = None,  *args, **kw):
+                 trench_crossing: bool = False, geometry: LineString = None, house_trench: bool = False,  *args, **kw):
         super(Trench, self).__init__(*args, **kw)
         self['u_for_edge'] = u_for_edge
         self['v_for_edge'] = v_for_edge
@@ -147,6 +147,7 @@ class Trench(dict):
         self.street_names = street_names
         self['trench'] = trench
         self['trench_crossing'] = trench_crossing
+        self['house_trench'] = house_trench
         if geometry is not None:
             self['geometry'] = geometry
             self.has_geometry = True
