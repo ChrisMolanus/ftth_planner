@@ -453,7 +453,7 @@ def _get_street_cabinets(trench_network: TrenchNetwork,
 
 
 def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.MultiGraph,
-                            trench_corner_gdf: gpd.GeoDataFrame, trenches_df, trenches_gdf,
+                            trench_corner_gdf: gpd.GeoDataFrame, trenches_df: pd.DataFrame, trenches_gdf: gpd.GeoDataFrame,
                             cabinet_look_up: Dict[int, StreetCabinet]) -> Union[FiberNetwork, networkx.MultiGraph]:
     """
     Create a last mile optical network which is cables form splitters to buildings
