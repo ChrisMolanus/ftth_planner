@@ -118,7 +118,10 @@ def get_costs(fiber_network: FiberNetwork, cost_parameters: CostParameters) -> D
         costs.fiber_cables_installation[t] = DetailedCostLine(0.0, "km", 0.0)
     for fibers in fiber_network.fibers.values():
         for fiber in fibers:
-            trench_node_ids = used_trench_ids.union(set(fiber.trench_node_ids))
+            # TODO: look up trench for every node pair in fiber.trench_node_ids
+            #  using the index in fiber_network.trenches
+            #  to calculate how much trench length we need to dig
+
             costs.fiber_cables_material[fiber.cable_type].quantity += fiber.length
             costs.fiber_cables_installation[fiber.cable_type].quantity += fiber.length
     for t in costs.fiber_cables_material.keys():
@@ -163,9 +166,7 @@ def get_costs(fiber_network: FiberNetwork, cost_parameters: CostParameters) -> D
 
 if __name__ == "__main__":
     fake_network = FiberNetwork()
-    # self.fibers: Dict[CableType, List[FiberCable]] = dict()
-    # self.equipment: Dict[EquipmentType, List[Equipment]] = dict()
-    # self.trenches: pd.DataFrame = None
+
     fake_network.fibers[CableType.CoreToDS] = list()
     fake_network.fibers[CableType.CoreToDS].append(
         FiberCable(trench_node_ids=[1, 2, 3], length=6, cable_type=CableType.CoreToDS))
