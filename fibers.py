@@ -110,7 +110,7 @@ class FiberNetwork:
         """
         A Fiberoptic Network
         """
-        self.fiber_network: networkx.MultiDiGraph = None
+        self.fibernetwork: networkx.MultiDiGraph = None
         self.fibers: Dict[CableType, List[FiberCable]] = dict()
         self.equipment: Dict[EquipmentType, List[Equipment]] = dict()
         self.trenches: pd.DataFrame = None
@@ -185,14 +185,12 @@ def _get_ds_locations(trench_network: TrenchNetwork, cabinet_look_up: Dict[int, 
                                                      street_cabinets=sc)
     return ds_look_up
 
-def _find_shortest_path_to_streetcabinets(ds_look_up, g_box: networkx.MultiGraph,
-                                     building_trenches_df: pd.DataFrame, trench_corner_gdf: gpd.GeoDataFrame,
+def _find_shortest_path_to_streetcabinets(ds_look_up, g_box: networkx.MultiGraph, trench_corner_gdf: gpd.GeoDataFrame,
                                      trenches_gdf: gpd.GeoDataFrame) -> List[Dict[str, Any]]:
     """
     Find the shortest path from each street cabinet to its associated decentral location
     :param cabinet_look_up: The Street Cabinets
     :param g_box: The OSMX graph
-    :param building_trenches_df: The building Dataframe with a "cabinet_id" column
     :param trench_corner_gdf:
     :param trenches_gdf:
     :return: A list of last mile fiber routes
@@ -219,9 +217,9 @@ def _find_shortest_path_to_streetcabinets(ds_look_up, g_box: networkx.MultiGraph
 
     return co_fiber_cables
 
-def _get_co_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.MultiGraph,
+def _get_co_cable_network(fiber_network: FiberNetwork(), g_box: networkx.MultiGraph,
                             trench_corner_gdf: gpd.GeoDataFrame, trenches_df, trenches_gdf,
-                            ds_look_up: Dict[int, DecentralLocation]) -> Union[FiberNetwork, networkx.MultiGraph]:
+                            ds_look_up: Dict[int, StreetCabinet]) -> Union[FiberNetwork, networkx.MultiGraph]:
     """
     Create a last mile optical network which is cables form splitters to buildings
     :param building_trenches_df: The GeoPandas Dataframe of buildings with cabinet IDs
@@ -232,10 +230,7 @@ def _get_co_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.Mu
     :param ds_look_up: The Decentralized Locations
     :return: A Fiber Network object and a Fiber graph as a NetworkX graph
     """
-    fiber_network = FiberNetwork()
-    co_fiber_cables = _find_shortest_path_to_streetcabinets(ds_look_up, g_box,
-                                                            building_trenches_df,
-                                                            trench_corner_gdf, trenches_gdf)
+    co_fiber_cables = _find_shortest_path_to_streetcabinets(ds_look_up, g_box, trench_corner_gdf, trenches_gdf)
 
     trenches_df["min_node_id"] = trenches_df[['u', 'v']].min(axis=1)
     trenches_df["max_node_id"] = trenches_df[['u', 'v']].max(axis=1)
@@ -273,7 +268,7 @@ def _get_co_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.Mu
     sub_cable_gdf = gpd.GeoDataFrame(sub_cable_df)
     sub_cable_gdf.set_index(['u', 'v', 'key'], inplace=True)
 
-    fiber_network.trenches = pd.concat(fiber_network.trenches, trench_look_up.loc[all_trench_ids])
+    fiber_network.trenches = pd.concat([fiber_network.trenches, trench_look_up.loc[all_trench_ids]])
 
     return fiber_network, fiber_graph
 
@@ -300,23 +295,25 @@ def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParame
     # Create Dataframe for clustering
     cabinet_look_up, building_trenches_with_cabinet_df = _get_street_cabinets(trench_network, building_trenches_df)
 
+    ds_look_up = _get_ds_locations(trench_network, cabinet_look_up, building_trenches_df)
+
     # Find shortest paths between the buildings and the cabinets
     fiber_network, fiber_graph = _get_drop_cable_network(building_trenches_with_cabinet_df,
                                                          g_box,
                                                          trench_corner_gdf,
                                                          trenches_df,
                                                          trenches_gdf,
-                                                         cabinet_look_up)
+                                                         cabinet_look_up) \
 
-    ds_look_up = _get_ds_locations(trench_network, cabinet_look_up, building_trenches_df)
+
     fiber_network.equipment[EquipmentType.DecentralLocation] = list(ds_look_up.values())
 
-    fiber_network, fiber_graph = _get_co_cable_network(building_trenches_with_cabinet_df,
-                                                         g_box,
-                                                         trench_corner_gdf,
-                                                         trenches_df,
-                                                         trenches_gdf,
-                                                         cabinet_look_up)
+    fiber_network, fiber_graph = _get_co_cable_network(fiber_network,
+                                                       g_box,
+                                                       trench_corner_gdf,
+                                                       trenches_df,
+                                                       trenches_gdf,
+                                                       ds_look_up)
 
     plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up, ds_look_up)
 
@@ -582,7 +579,7 @@ def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up: Dict[int, Str
           "grey" if "trench_crossing" in d and d["trench_crossing"] else
           "blue" if "house_trench" in d and d["house_trench"] else
           "green" if "cable" in d and d["cable_type"] == CableType.SplitterToHouseDropCable else
-          "yellow" if "cable" in d and d["cable_type"] == CableType.DSToSplitter96Cores else
+          "pink" if "cable" in d and d["cable_type"] == CableType.DSToSplitter96Cores else
           'red' for _, _, _, d in fiber_graph.edges(keys=True, data=True)]
     fig, ax = ox.plot_graph(fiber_graph, bgcolor='white', edge_color=ec,
                             node_size=0, edge_linewidth=0.5,
@@ -597,8 +594,8 @@ if __name__ == "__main__":
     start_time = time.time()
         # Try and load cached data for speed
     # box2 = (51.98446, 51.98000, 5.64113, 5.6575)
-    # box = (50.843217, 50.833949, 4.439903, 4.461962)
-    box = (52.38132054097, 52.36193148749, 4.84358307250, 4.884481392928)
+    box = (50.843217, 50.833949, 4.439903, 4.461962)
+    # box = (52.38132054097, 52.36193148749, 4.84358307250, 4.884481392928)
     if not os.path.isfile("g_box.p"):
         g_box = ox.graph_from_bbox(*box,
                                    network_type='drive',
