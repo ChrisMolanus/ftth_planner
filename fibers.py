@@ -13,14 +13,13 @@ import networkx as nx
 import osmnx as ox
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler
 import geopandas as gpd
 from k_means_constrained import KMeansConstrained
 from scipy.spatial import cKDTree
-from shapely.geometry import Point, Polygon, LineString
+from shapely.geometry import LineString
 
 from cost_parameters import CostParameters
-from trenches2 import TrenchNetwork, TrenchCorner, add_trenches_to_network, get_trench_network
+from trenches2 import TrenchNetwork, TrenchCorner, get_trench_network
 
 
 class CableType(Enum):
