@@ -25,7 +25,7 @@ def plot_network(g_box: networkx.MultiDiGraph):
 start_time = time.time()
 
 # Get graphs of different infrastructure types, then get trenches
-box = (51.98446, 51.98000, 5.64113, 5.6575)
+box = (50.78694, 50.77902, 4.48386, 4.49521)
 g_box = ox.graph_from_bbox(*box,
                            network_type='drive',
                            simplify=False,
