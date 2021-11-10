@@ -24,11 +24,11 @@ def get_planning():
     return detailed_cost, fig
 
 # Sidebar with coordinate/placename inputs
-north_field, south_field = st.sidebar.beta_columns(2)
-east_field, west_field = st.sidebar.beta_columns(2)
+north_field, south_field = st.sidebar.columns(2)
+east_field, west_field = st.sidebar.columns(2)
 
 # Write a page title
-col1, col2 = st.beta_columns((2, 1))
+col1, col2 = st.columns((2, 1))
 col1.title('Fiber To The Home Network')
 
 #Insert a picture next to title
