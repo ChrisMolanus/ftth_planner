@@ -6,20 +6,20 @@ class CostParameters:
     yaml_tag = u'!CostParameters'
 
     def __init__(self):
-        self.dig_road_side_trench_per_km: float = 1
-        self.dig_per_road_crossing: float = 1
-        self.dig_building_trench_per_km: float = 1
-        self.fiber_drop_pair_per_km: float = 1
-        self.fiber_96core_per_km: float = 1
-        self.fiber_install_per_km: float = 1
-        self.fiber_ds_to_core_per_km: float = 1
-        self.placement_of_street_cabinet: float = 1
-        self.street_cabinet: float = 1
-        self.placement_of_ds: float = 1
-        self.ds: float = 1
-        self.placement_of_ont: float = 1
-        self.ont: float = 1
-        self.splitter: float = 1
+        self.dig_road_side_trench_per_km: float = 16700.0
+        self.dig_per_road_crossing: float = 267200.0
+        self.dig_building_trench_per_km: float = 16700.0
+        self.fiber_drop_pair_per_km: float = 620.0
+        self.fiber_96core_per_km: float = 18100.0
+        self.fiber_install_per_km: float = 24500.0
+        self.fiber_ds_to_core_per_km: float = 38400.0
+        self.placement_of_street_cabinet: float = 22.36
+        self.street_cabinet: float = 180.0
+        self.placement_of_ds: float = 22.36
+        self.ds: float = 912.0
+        self.placement_of_ont: float = 85.91
+        self.ont: float = 70.0
+        self.splitter: float = 20.0
 
     def dump_to_file(self):
         yaml = ruamel.yaml.YAML()
