@@ -88,10 +88,13 @@ def get_perpendicular_line(u_node: dict, v_node: dict, ref_point: dict) -> Tuple
     x1, y1 = _LatLon_To_XY(u_node['x'], u_node['y'])
     x2, y2 = _LatLon_To_XY(v_node['x'], v_node['y'])
     x3, y3 = _LatLon_To_XY(ref_point['x'], ref_point['y'])
-    if ((y2 - y1) ** 2 + (x2 - x1) ** 2) != 0:
-        k = ((y2 - y1) * (x3 - x1) - (x2 - x1) * (y3 - y1)) / ((y2 - y1) ** 2 + (x2 - x1) ** 2)
-        x4 = x3 - k * (y2 - y1)
-        y4 = y3 + k * (x2 - x1)
+    dx = x2 - x1
+    dy = y2 - y1
+
+    if (dy ** 2 + dx ** 2) != 0:
+        k = (dy * (x3 - x1) - (dx) * (y3 - y1)) / (dy ** 2 + dx ** 2)
+        x4 = x3 - k * dy
+        y4 = y3 + k * dx
     px4, py4 = _XY_To_LatLon(x4, y4)
     return {'x': ref_point['x'], 'y': ref_point['y']}, {'x': px4, 'y': py4}
 
