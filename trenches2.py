@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import math
 
 import pandas as pd
+import geopandas as gpd
 import pyproj
 from shapely.geometry import LineString
 
@@ -1105,8 +1106,8 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     return TrenchNetwork(trench_corners, trenches, building_trenches_lookup, corner_by_id)
 
 
-def add_trenches_to_network(trench_network: TrenchNetwork,
-                            road_network: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
+def get_trench_to_network_graph(trench_network: TrenchNetwork,
+                                road_network: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
     """
     Adds the trenches and nodes in the trench_network to an existing OSM Network
     :param trench_network: The Trench network
@@ -1114,17 +1115,20 @@ def add_trenches_to_network(trench_network: TrenchNetwork,
     :return: A combined MultiDiGraph
     """
     # Add trench corner nodes to network
+    building_fiber_graph = ox.graph_from_gdfs(gpd.GeoDataFrame(columns=["x", "y"]), gpd.GeoDataFrame(), graph_attrs=road_network.graph)
+
     for intersection_osmid, corners in trench_network.trenchCorners.items():
         for corner in corners:
             # TODO: addes nodes more then ones, but it should be ok since they have the same ID
-            road_network.add_node(**corner)
+            building_fiber_graph.add_node(**corner)
 
     # Add the trenches to the network
     osmid = 8945376
     for trench in trench_network.trenches:
         osmid += 1
-        road_network.add_edge(**trench, key=1, osmid=osmid)
-    return road_network
+        building_fiber_graph.add_edge(**trench, key=1, osmid=osmid)
+
+    return building_fiber_graph
 
 
 if __name__ == "__main__":
@@ -1137,14 +1141,19 @@ if __name__ == "__main__":
     building_gdf = ox.geometries_from_bbox(*box, tags={'building': True})
     trench_network = get_trench_network(g_box, building_gdf)
 
-    trench_graph = add_trenches_to_network(trench_network, g_box)
+    trench_graph = get_trench_to_network_graph(trench_network, g_box)
 
     ec = ['black' if 'highway' in d else
-          "grey" if "trench_crossing" in d and d["trench_crossing"]else
+          'red' for _, _, _, d in g_box.edges(keys=True, data=True)]
+    fig, ax = ox.plot_graph(g_box, bgcolor='white', edge_color=ec,
+                            node_size=0, edge_linewidth=0.5,
+                            show=False, close=False)
+
+    ec = ["grey" if "trench_crossing" in d and d["trench_crossing"]else
           "blue" if "house_trench" in d else
           'red' for _, _, _, d in trench_graph.edges(keys=True, data=True)]
     fig, ax = ox.plot_graph(trench_graph, bgcolor='white', edge_color=ec,
                             node_size=0, edge_linewidth=0.5,
-                            show=False, close=False)
+                            show=False, close=False, ax=ax)
     ox.plot_footprints(building_gdf, ax=ax, color="orange", alpha=0.5)
     plt.show()
