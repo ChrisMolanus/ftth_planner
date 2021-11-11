@@ -550,7 +550,10 @@ def _find_shortest_path_to_cabinets(ds_look_up, g_box: networkx.MultiGraph, tren
             except networkx.exception.NetworkXNoPath:
                 pass
                 # print(f"No drop cable path could be found for building_index {building_index}")
-
+            for pair in list(zip(s_path[::1], s_path[1::1])):
+                edge = graph.edges[pair[0], pair[1], 1]
+                edge["weight"] = (edge["length"] * (
+                            cost_parameters.fiber_install_per_km + cost_parameters.fiber_96core_per_km))
     return ds_fiber_cables
 
 
