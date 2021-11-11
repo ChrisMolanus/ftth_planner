@@ -508,6 +508,10 @@ def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], 
         except networkx.exception.NetworkXNoPath:
             pass
             # print(f"No drop cable path could be found for building_index {building_index}")
+        # update graph edge "weight" for every edge in s_path by removing the one time cost for digging
+        for pair in list(zip(s_path[::1], s_path[1::1])):
+            edge = graph.edges[pair[0], pair[1], 1]
+            edge["weight"] = (edge["length"] * (cost_parameters.fiber_install_per_km + cost_parameters.fiber_drop_pair_per_km))
 
     return building_drop_cables
 
