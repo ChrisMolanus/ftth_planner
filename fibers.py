@@ -687,7 +687,7 @@ def plot_fiber_network(road_graph, building_fiber_graph, fiber_dc_graph, buildin
 
     fig, ax = ox.plot_footprints(building_gdf, ax=ax, color="burlywood", alpha=0.6, show=False, close=False)
 
-    ax.scatter(cabinet_df.x, cabinet_df.x, s=70, color="red")
+    ax.scatter(cabinet_df.x, cabinet_df.y, s=70, color="red")
     ax.scatter(ds_df.x, ds_df.y, s=70, color="yellow")
 
     return(fig)
