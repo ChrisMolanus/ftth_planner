@@ -559,13 +559,13 @@ def _find_shortest_path_to_cabinets(ds_look_up, g_box: networkx.MultiGraph, tren
     return ds_fiber_cables
 
 
-def _get_ds_cable_network(fiber_network: FiberNetwork(), fiber_graph: networkx.MultiGraph,
+def _get_ds_cable_network(fiber_network: FiberNetwork(), g_box: networkx.MultiGraph,
                           trench_corner_gdf: gpd.GeoDataFrame, trenches_df, trenches_gdf,
                           ds_look_up: Dict[int, StreetCabinet], cost_parameters: CostParameters) -> Union[FiberNetwork, networkx.MultiGraph]:
     """
     Create a last mile optical network which is cables form splitters to buildings
     :param building_trenches_df: The GeoPandas Dataframe of buildings with cabinet IDs
-    :param fiber_graph: The OSMX graph
+    :param g_box: The OSMX graph
     :param trench_corner_gdf: The trench corner DataFrame
     :param trenches_df: A Trench DataFrame
     :param trenches_gdf: A Trench Geo DataFrame
@@ -573,7 +573,7 @@ def _get_ds_cable_network(fiber_network: FiberNetwork(), fiber_graph: networkx.M
     :param cost_parameters: The cost parameters
     :return: A Fiber Network object and a Fiber graph as a NetworkX graph
     """
-    ds_fiber_cables = _find_shortest_path_to_cabinets(ds_look_up, fiber_graph, trench_corner_gdf, trenches_gdf, cost_parameters)
+    ds_fiber_cables = _find_shortest_path_to_cabinets(ds_look_up, g_box, trench_corner_gdf, trenches_gdf, cost_parameters)
 
     fiber_dc_graph = ox.graph_from_gdfs(trench_corner_gdf, gpd.GeoDataFrame(), graph_attrs=g_box.graph)
 
