@@ -1,4 +1,6 @@
 # Imports
+import numpy as np
+import pandas as pd
 import streamlit as st
 from PIL import Image
 import osmnx as ox
@@ -48,17 +50,24 @@ detailed_cost, fig = get_planning()
 
 # Map with optimal fiber route
 st.subheader(f'Optimal fiber network route for [N:{north}, S:{south}, E:{east}, W:{west}] \n')
-st.pyplot(fig)
+col1, col2 = st.columns((2, 1))
+col1.pyplot(fig)
+# Map
+map_data = {'lat': [np.average([float(north),float(south)])], 'lon': [np.average([float(east),float(west)])]}
+map_df = pd.DataFrame(data=map_data)
+col2.map(map_df, zoom=15)
 
 st.header('Cost data \n')
 st.subheader('Material Costs \n')
 materials_df = detailed_cost.get_materials_dataframe()
 materials_df.set_index('Type', inplace=True)
-st.dataframe(materials_df)
+cols_materials = list(materials_df.columns.values)
+ms_mat = st.multiselect("Select dataframe columns", materials_df.columns.tolist(), default=cols_materials, key=1)
+st.dataframe(materials_df[ms_mat])
 
 st.subheader('Labour Costs \n')
 labor_df = detailed_cost.get_labor_dataframe()
 labor_df.set_index('Type', inplace=True)
-st.dataframe(labor_df)
-
-
+cols_labor = list(labor_df.columns.values)
+ms_lab = st.multiselect("Select dataframe columns", labor_df.columns.tolist(), default=cols_labor, key=2)
+st.dataframe(labor_df[ms_lab])
