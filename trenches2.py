@@ -17,7 +17,8 @@ from shapely.geometry import LineString
 
 distance_from_center_of_road = 0.0001
 geod = pyproj.Geod(ellps='WGS84')
-
+# zone 31 for benelux
+P = pyproj.Proj(proj='utm', zone=31, ellps='WGS84', preserve_units=True)
 
 def point_distance_from_line(line: Tuple[dict, dict], point: dict) -> float:
     """
@@ -71,17 +72,32 @@ def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, 
     y = center['y'] + (radius * math.sin(radian))
     return x, y
 
+def _LatLon_To_XY(Lat,Lon):
+  return P(Lat,Lon)
+
+def _XY_To_LatLon(x,y):
+  return P(x,y,inverse=True)
 
 def get_perpendicular_line(u_node: dict, v_node: dict, ref_point: dict) -> Tuple[dict, dict]:
-    dx = u_node['x'] - v_node['x']
-    dy = u_node['y'] - v_node['y']
+    """
+    Returns the projection of a point over a line, corresponding to the perpendicular line.
+    :param u_node: The start node of the vector
+    :param v_node: The end node of the vector
+    :param ref_point: The point we would like to project
+    :return: The projected point over the vector
+    """
+    x1, y1 = _LatLon_To_XY(u_node['x'], u_node['y'])
+    x2, y2 = _LatLon_To_XY(v_node['x'], v_node['y'])
+    x3, y3 = _LatLon_To_XY(ref_point['x'], ref_point['y'])
+    dx = x2 - x1
+    dy = y2 - y1
 
-    # Perpendicular line
-    # TODO: flipping dx and dy is probably not correct but the point looks worse if we correct it
-    dx1 = -1 * dy
-    dy1 = dx
-
-    return {'x': ref_point['x'], 'y': ref_point['y']}, {'x': ref_point['x'] + dx1, 'y': ref_point['y'] + dy1}
+    if (dy ** 2 + dx ** 2) != 0:
+        k = (dy * (x3 - x1) - (dx) * (y3 - y1)) / (dy ** 2 + dx ** 2)
+        x4 = x3 - k * dy
+        y4 = y3 + k * dx
+    px4, py4 = _XY_To_LatLon(x4, y4)
+    return {'x': ref_point['x'], 'y': ref_point['y']}, {'x': px4, 'y': py4}
 
 
 def point_on_line(u, v, c, return_distance=False):
