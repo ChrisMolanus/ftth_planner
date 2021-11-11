@@ -9,6 +9,7 @@ import itertools
 import matplotlib.pyplot as plt
 import math
 
+import pandas as pd
 from shapely.geometry import LineString
 
 distance_from_center_of_road = 0.0001
@@ -95,7 +96,8 @@ def point_on_line(u, v, c, return_distance=False):
 
 
 class TrenchCorner(dict):
-    def __init__(self, x: float, y: float, trench_count: int, u_node_id: int, street_ids: Set, *args, **kw):
+    def __init__(self, x: float, y: float, trench_count: int, u_node_id: int, street_ids: Set,
+                 node_for_adding: int = None, *args, **kw):
         """
         A FttH planner trench corner
         :param x: The OSMnx x coordinate of the node
@@ -103,6 +105,7 @@ class TrenchCorner(dict):
         :param trench_count:
         :param u_node_id: The OSMnx node ID of the intersection this corner is on
         :param street_ids: A SET of the string- representation of the sorted list of node IDs
+        :param node_for_adding: The OSMX node id, default is None if not yet known
         :param args: Dict args
         :param kw: Dict kw
         """
@@ -113,6 +116,8 @@ class TrenchCorner(dict):
         self['u'] = u_node_id
         self['street_count'] = 1
         self['street_ids'] = street_ids
+        self['node_for_adding'] = node_for_adding
+
 
     def __cmp__(self, other):
         return self['x'] == other['x'] and self['y'] == other['y']
@@ -331,17 +336,19 @@ def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: Li
             'street_names': street_names}
 
 
-def get_trench_corners(network: networkx.MultiDiGraph,
+def get_trench_corners(road_network: networkx.MultiDiGraph,
                        ref_distance_from_center_of_road: float) -> Tuple[Dict[str, Set[TrenchCorner]],
                                                                          Dict[str, List[Trench]]]:
     """
     Create TrenchCorners (Nodes) for every intersection in the network.
     The TrenchCorners will be places between each of the roads of the intersection.
     It also creates the trenches between those points to connect road trenches to each other (road_crossing Trenches)
-    :param network: The road network
+    :param road_network: The road network
     :param ref_distance_from_center_of_road: The distance the trenches should be from the center of the road
     :return: trench_corners, road_crossing
     """
+    # make network undirected so that one way street nodes have two neighbors
+    network = road_network.to_undirected()
     nodes = dict()
     output_trench_corners = dict()
     output_road_crossing = dict()
@@ -590,14 +597,19 @@ def intersection_between_points(l1: List[dict], l2: List[dict]) -> bool:
 
 
 class TrenchNetwork:
-    def __init__(self, trench_corners: Dict[str, TrenchCorner], trenches: List[Trench]):
+    def __init__(self, trench_corners: Dict[str, TrenchCorner], trenches: List[Trench],
+                 building_trenches_lookup: Dict[str, Tuple[int, int]], corner_by_id: Dict[int, TrenchCorner]):
         """
         A Cognizant FttH Trench Network
         :param trench_corners: The nodes of the network
         :param trenches: The edges of the network
+        :param building_trenches_lookup: the building's centroid and trenchcorner of building trench
+        :param corner_by_id: The nodes of the network keyed by id (should replace trench_corners)
         """
         self.trenchCorners = trench_corners
+        self.building_trenches_lookup = building_trenches_lookup
         self.trenches = trenches
+        self.corner_by_id = corner_by_id
 
 
 class TrenchInfo:
@@ -672,9 +684,10 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
         street_name = building['addr:street']
         centroid = building['geometry'].centroid
         distance = float('inf')
-        building_centriod_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0], 'building_index': building_index}
+        building_centroid_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0], 'building_index': building_index}
         # There might be buildings in the box that are on roads that are not in the box, geo fencing problem
-        if len(street_trenches[street_name]) > 0:
+        # or just buildings with no address
+        if street_name in street_trenches and len(street_trenches[street_name]) > 0:
             # Loop over every trench for this street and find the closest one
             for trench_index, trench in street_trenches[street_name].items():
                 if trench_index not in building_by_closest_trench:
@@ -683,17 +696,17 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
                 corner_v: TrenchCorner = corner_by_id[trench['v_for_edge']]
                 if 'geometry' not in trenches[trench_index]:
                     # Get the intersection point between the road trench and a perpendicular line of the building
-                    perpendicular_line = get_perpendicular_line(corner_u, corner_v, building_centriod_node)
+                    perpendicular_line = get_perpendicular_line(corner_u, corner_v, building_centroid_node)
                     projected = get_intersection_point2(perpendicular_line, (corner_u, corner_v))
                     # Extra check to make sure we are not doing something wrong, might be a bug in the code
                     if is_between2(corner_u, corner_v, projected):
-                        new_distance = node_distance(projected, building_centriod_node)
+                        new_distance = node_distance(projected, building_centroid_node)
                         # Check if this trench is the closest one so far
                         if new_distance < distance:
                             new_v_node = projected
                             distance = new_distance
                             closest_trench = trench_index
-                            closest_trench_info = {'building_centroid_node': building_centriod_node,
+                            closest_trench_info = {'building_centroid_node': building_centroid_node,
                                                    'ref_new_v_node': new_v_node,
                                                    'closest_trench': closest_trench,
                                                    'geometry': False,
@@ -712,17 +725,17 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
                             last_node = {'x': sub_x, 'y': sub_y}
                         else:
                             sub_u_node = {'x': sub_x, 'y': sub_y}
-                            perpendicular_line = get_perpendicular_line(last_node, sub_u_node, building_centriod_node)
+                            perpendicular_line = get_perpendicular_line(last_node, sub_u_node, building_centroid_node)
                             projected = get_intersection_point2(perpendicular_line, (last_node, sub_u_node))
                             if is_between2(last_node, sub_u_node, projected):
-                                new_distance = node_distance(projected, building_centriod_node)
+                                new_distance = node_distance(projected, building_centroid_node)
                                 last_node = sub_u_node
                                 if new_distance < distance:
                                     new_v_node = projected
                                     distance = new_distance
                                     shortest_i = segment_index
                                     closest_trench = trench_index
-                                    closest_trench_info = {'building_centroid_node': building_centriod_node,
+                                    closest_trench_info = {'building_centroid_node': building_centroid_node,
                                                            'ref_new_v_node': new_v_node,
                                                            'closest_trench': closest_trench,
                                                            'geometry': True,
@@ -762,6 +775,9 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
     new_trench_corners: Dict[str, Set[TrenchCorner]] = dict()
     node_id = 500000000
     trench_indexes_to_remove = list()
+    # object used by fiber network to find road trench nodes for street cabinets
+    building_trenches_lookup: Dict[str, Tuple[int, int]] = dict()
+
     # Loop over all the buildings that we found closest trenches for and create the building trenches
     # and the new sub-trenches that should replace the current road trenches
     for trench_index, building_trench_info in building_by_closest_trench.items():
@@ -841,6 +857,8 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
                                              True,
                                              False, None, house_trench=True)
                     new_trenches.append(building_trench)
+                building_trenches_lookup[closest_trench_info1.building_centroid_node['building_index']] = \
+                    (building_node_id, new_v_node_id)
                 last_node_id = new_v_node_id
                 last_node = new_v_node
 
@@ -850,7 +868,7 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
             sub_trench = Trench(last_node_id, trench["v_for_edge"], "sub " + trench["name"], trench_length,
                                 trench.street_names, True, False)
             new_trenches.append(sub_trench)
-    return new_trench_corners, new_trenches, trench_indexes_to_remove
+    return new_trench_corners, new_trenches, trench_indexes_to_remove, building_trenches_lookup
 
 
 def get_trench_network(road_network: networkx.MultiDiGraph,
@@ -907,8 +925,10 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                         if point_pair1[0]['u'] != point_pair1[1]['u']:
                             # trench_candidate as to be a list because tuples are immutable,
                             # and we might invalidate it later whe we chose from the candidates
-                            trench_candidate = [point_pair1[0], point_pair1[1], street['name']]
-
+                            if "name" in street:
+                                trench_candidate = [point_pair1[0], point_pair1[1], street['name']]
+                            else:
+                                trench_candidate = [point_pair1[0], point_pair1[1], "Unknown"]
                             # There is no need to have multiple trenches between the same two points
                             # So only process a pair ones
                             xs = [trench_candidate[0]['x'], trench_candidate[1]['x']]
@@ -983,7 +1003,8 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
                         new_curved_pp.append(curved_trench)
                     else:
                         print(f"Can't find side corners {street}")
-
+        else:
+            print(f"Warning: street_segment_id {street_segment_id} not in trench_corners")
     # If there are more than one possibility to have a trench on one side of the street segment,
     # Find the shortest one and make the others as invalid i.e. (None, None)
     # TODO: split by side of road and find shortest on ether side separately
@@ -1040,7 +1061,8 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     building_by_closest_trench = get_building_by_closest_trench(building_gdf, trench_corners, trenches)
 
     # Get new road trenches that are connected to the building trenches
-    new_trench_corners, new_trenches,  trench_indexes_to_remove = get_sub_trenches_for_buildings(
+    new_trench_corners, new_trenches,  trench_indexes_to_remove, building_trenches_lookup = \
+        get_sub_trenches_for_buildings(
         building_by_closest_trench, trenches, trench_corners)
 
     # new_trench_corners has different keys than what is currently in trench_corners
@@ -1057,7 +1079,12 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     for trench_index in trench_indexes_to_remove:
         del trenches[trench_index]
 
-    return TrenchNetwork(trench_corners, trenches)
+    corner_by_id: Dict[int, TrenchCorner] = dict()
+    for intersection_osmid, corners in trench_corners.items():
+        for corner in corners:
+            corner_by_id[corner['node_for_adding']] = corner
+
+    return TrenchNetwork(trench_corners, trenches, building_trenches_lookup, corner_by_id)
 
 
 def add_trenches_to_network(trench_network: TrenchNetwork,
@@ -1083,19 +1110,22 @@ def add_trenches_to_network(trench_network: TrenchNetwork,
 
 
 if __name__ == "__main__":
-    g_box = ox.graph_from_bbox(50.78694, 50.77902, 4.48386, 4.49521,
+    box = (50.843217, 50.833949, 4.439903, 4.461962)
+    g_box = ox.graph_from_bbox(*box,
                                network_type='drive',
                                simplify=False,
                                retain_all=False,
                                truncate_by_edge=True)
-    building_gdf = ox.geometries_from_bbox(50.78694, 50.77902, 4.48586, 4.49721, tags={'building': True})
+    building_gdf = ox.geometries_from_bbox(*box, tags={'building': True})
     trench_network = get_trench_network(g_box, building_gdf)
+
+    trench_graph = add_trenches_to_network(trench_network, g_box)
 
     ec = ['black' if 'highway' in d else
           "grey" if "trench_crossing" in d and d["trench_crossing"]else
           "blue" if "house_trench" in d else
-          'red' for _, _, _, d in g_box.edges(keys=True, data=True)]
-    fig, ax = ox.plot_graph(g_box, bgcolor='white', edge_color=ec,
+          'red' for _, _, _, d in trench_graph.edges(keys=True, data=True)]
+    fig, ax = ox.plot_graph(trench_graph, bgcolor='white', edge_color=ec,
                             node_size=0, edge_linewidth=0.5,
                             show=False, close=False)
     ox.plot_footprints(building_gdf, ax=ax, color="orange", alpha=0.5)
