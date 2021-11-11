@@ -241,7 +241,7 @@ def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParame
                                                        ds_look_up,
                                                        cost_parameters)
 
-    fig = plot_fiber_network(building_fiber_graph, fiber_dc_graph, building_gdf, cabinet_look_up, ds_look_up, None)
+    fig = plot_fiber_network(g_box, building_fiber_graph, fiber_dc_graph, building_gdf, cabinet_look_up, ds_look_up, None)
 
     return fiber_network, fig
 
