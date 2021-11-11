@@ -241,7 +241,7 @@ def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParame
                                                        ds_look_up,
                                                        cost_parameters)
 
-    fig = plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up, ds_look_up)
+    fig = plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up, ds_look_up, None)
 
     return fiber_network, fig
 
@@ -686,9 +686,6 @@ def plot_fiber_network(fiber_graph, building_gdf, cabinet_look_up: Dict[int, Str
 
 
 if __name__ == "__main__":
-    import time
-
-    start_time = time.time()
     # Try and load cached data for speed
     # box2 = (51.98446, 51.98000, 5.64113, 5.6575)
     box = (50.843217, 50.833949, 4.439903, 4.461962)
