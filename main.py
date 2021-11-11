@@ -7,7 +7,7 @@ from cost_parameters import CostParameters
 from costs import DetailedCost, get_costs
 from fibers import get_fiber_network
 from report import get_detailed_report
-from trenches2 import get_trench_network, add_trenches_to_network
+from trenches2 import get_trench_network, get_trench_to_network_graph
 
 
 def plot_network(g_box: networkx.MultiDiGraph):
@@ -36,8 +36,8 @@ trench_network = get_trench_network(g_box, building_gdf)
 # import pickle
 # pickle.dump(trench_network, open("trench_network.p", "wb"))
 
-trench_network_graph = add_trenches_to_network(trench_network, g_box)
-plot_network(trench_network_graph)
+trench_network_graph = get_trench_to_network_graph(trench_network, g_box)
+plot_network(g_box, trench_network_graph, building_gdf)
 
 cost_parameters = CostParameters()
 fiber_network, fig = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
