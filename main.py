@@ -10,14 +10,20 @@ from report import get_detailed_report
 from trenches2 import get_trench_network, get_trench_to_network_graph
 
 
-def plot_network(g_box: networkx.MultiDiGraph):
+def plot_network(g_box: networkx.MultiDiGraph, trench_network_graph: networkx.MultiDiGraph, building_gdf):
     ec = ['black' if 'highway' in d else
-          "grey" if "trench_crossing" in d and d["trench_crossing"]else
-          "blue" if "house_trench" in d else
           'red' for _, _, _, d in g_box.edges(keys=True, data=True)]
     fig, ax = ox.plot_graph(g_box, bgcolor='white', edge_color=ec,
                             node_size=0, edge_linewidth=0.5,
                             show=False, close=False)
+
+    ec = ["grey" if "trench_crossing" in d and d["trench_crossing"] else
+          "blue" if "house_trench" in d else
+          'red' for _, _, _, d in trench_network_graph.edges(keys=True, data=True)]
+    fig, ax = ox.plot_graph(trench_network_graph, bgcolor='white', edge_color=ec,
+                            node_size=0, edge_linewidth=0.5,
+                            show=False, close=False, ax=ax)
+
     ox.plot_footprints(building_gdf, ax=ax, color="orange", alpha=0.5)
     plt.show()
 
