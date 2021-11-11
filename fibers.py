@@ -23,8 +23,8 @@ from trenches2 import TrenchNetwork, TrenchCorner, get_trench_network
 
 
 class CableType(Enum):
-    CoreToDS = "Core To DS"
-    DSToSplitter96Cores = "DSToSplitter96Cores"
+    CoreToDS = "Core To DS Cable"
+    DSToSplitter96Cores = "DSToSplitter96Cores Cable"
     SplitterToHouseDropCable = "Splitter To House Drop Cable"
 
 
