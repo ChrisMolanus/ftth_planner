@@ -1,5 +1,5 @@
 import sys
-from typing import Set, Dict, List, Any
+from typing import Set, Dict, List, Any, Tuple
 
 import pandas as pd
 
@@ -107,20 +107,19 @@ class DetailedCost:
 def get_costs(fiber_network: FiberNetwork, cost_parameters: CostParameters) -> DetailedCost:
     costs = DetailedCost(fiber_network, cost_parameters)
     # Collect the trenches that we will have to dig and the lengths of the cables we will use
-    trenches_df = fiber_network.trenches
-    mi = pd.MultiIndex.from_frame(trenches_df[["min_node_id", "max_node_id"]])
-    trench_look_up = trenches_df
-    trench_look_up.index = mi
 
-    used_trench_ids: Set[int] = set()
+    # Workaround for Bug where only some of the index have a key value,  maybe it's because fiber.py doesn't use all trenches
+    mi = pd.MultiIndex.from_frame(fiber_network.trenches[["min_node_id", "max_node_id", "key"]])
+    fiber_network.trenches.index = mi
+    fiber_network.trenches.sort_index(inplace=True)
+
+    used_trench_node_ids: Set[Tuple[int, int]] = set()
     for t in CableType:
         costs.fiber_cables_material[t] = DetailedCostLine(0.0, "km", 0.0)
         costs.fiber_cables_installation[t] = DetailedCostLine(0.0, "km", 0.0)
     for fibers in fiber_network.fibers.values():
         for fiber in fibers:
-            # TODO: look up trench for every node pair in fiber.trench_node_ids
-            #  using the index in fiber_network.trenches
-            #  to calculate how much trench length we need to dig
+            used_trench_node_ids = used_trench_node_ids.union(set(fiber.trench_node_ids))
 
             costs.fiber_cables_material[fiber.cable_type].quantity += fiber.length
             costs.fiber_cables_installation[fiber.cable_type].quantity += fiber.length
@@ -131,12 +130,28 @@ def get_costs(fiber_network: FiberNetwork, cost_parameters: CostParameters) -> D
 
     # For the trenches that we have to dig get the lengths per Type since they have different costs
     for t in TrenchType:
-        costs.digging_labour[t] = DetailedCostLine(0.0, "km", 0.0)
-    for trench_id in used_trench_ids:
-        trench = fiber_network.trenches[trench_id]
-        costs.digging_labour[trench.type].quantity += trench['length']
+        if t != TrenchType.Road_crossing:
+            costs.digging_labour[t] = DetailedCostLine(0.0, "km", 0.0)
+        else:
+            costs.digging_labour[t] = DetailedCostLine(0.0, "crossings", 0.0)
+
+    for trench_ids in used_trench_node_ids:
+        trench: dict = fiber_network.trenches.loc[pd.IndexSlice[trench_ids]].to_dict(orient='records')[0]
+        type = TrenchType.Road_crossing if trench["trench_crossing"] else TrenchType.Building if trench["house_trench"]\
+            else TrenchType.Road_side
+        costs.digging_labour[type].quantity += trench['length'] if type != TrenchType.Road_crossing else 1
     for t in costs.digging_labour.keys():
-        costs.digging_labour[t].quantity = round(costs.digging_labour[t].quantity / 1000, 2)
+        if t != TrenchType.Road_crossing:
+            costs.digging_labour[t].quantity = round(costs.digging_labour[t].quantity / 1000, 2)
+        if t == TrenchType.Road_side:
+            costs.digging_labour[t].total_cost = costs.digging_labour[
+                                                     t].quantity * cost_parameters.dig_per_road_crossing
+        elif t == TrenchType.Building:
+            costs.digging_labour[t].total_cost = costs.digging_labour[
+                                                     t].quantity * cost_parameters.dig_building_trench_per_km
+        else:
+            costs.digging_labour[t].total_cost = costs.digging_labour[
+                                                     t].quantity * cost_parameters.dig_per_road_crossing
 
     # Account for the equipment
     for equipmentType, equipments in fiber_network.equipment.items():
@@ -173,14 +188,6 @@ if __name__ == "__main__":
     fake_network.fibers[CableType.CoreToDS].append(
         FiberCable(trench_node_ids=[1, 15, 16], length=6, cable_type=CableType.CoreToDS))
 
-    # hugo
-    trenches: List[Trench] = list()
-    trenches.append(Trench(u_for_edge=1, v_for_edge=2, name="", length=1.0, street_names=set()))
-    trenches.append(Trench(u_for_edge=2, v_for_edge=3, name="", length=1.0, street_names=set()))
-    trenches.append(Trench(u_for_edge=1, v_for_edge=15, name="", length=1.0, street_names=set()))
-    trenches.append(Trench(u_for_edge=15, v_for_edge=16, name="", length=1.0, street_names=set()))
-
-    fake_network.trenches = pd.DataFrame(trenches)
 
     fake_network.fibers[CableType.DSToSplitter96Cores] = list()
     fake_network.fibers[CableType.DSToSplitter96Cores].append(
@@ -195,6 +202,7 @@ if __name__ == "__main__":
                                                            StreetCabinet(trench_corner=26, cabinet_id=2),
                                                            StreetCabinet(trench_corner=33, cabinet_id=3),
                                                            StreetCabinet(trench_corner=36, cabinet_id=4),]
+
 
     fake_network.equipment[EquipmentType.DecentralLocation] = [DecentralLocation(trench_corner=
                                                                                  TrenchCorner(trench_count=1,
@@ -255,14 +263,21 @@ if __name__ == "__main__":
                                                  ONT(building_index="way (8)",
                                                      splitter=fake_network.equipment[EquipmentType.Splitter][3]),
                                                  ]
+    trenches: List[Trench] = list()
+    for c_type, fiber_cables in fake_network.fibers.items():
+        for fiber_cable in fiber_cables:
+            used_trenches_unsorted = list(zip(fiber_cable.trench_node_ids[::1], fiber_cable.trench_node_ids[1::1]))
+            for pair in used_trenches_unsorted:
+                trenches.append(Trench(u_for_edge=pair[0], v_for_edge=pair[1], name="", length=1.0, street_names=set()))
 
-
+    fake_network.trenches = pd.DataFrame(trenches)
+    fake_network.trenches["key"] = 1
     fake_network.trenches["min_node_id"] = fake_network.trenches[['u_for_edge', 'v_for_edge']].min(axis=1)
     fake_network.trenches["max_node_id"] = fake_network.trenches[['u_for_edge', 'v_for_edge']].max(axis=1)
-    mi = pd.MultiIndex.from_frame(fake_network.trenches[["min_node_id", "max_node_id"]])
+    mi = pd.MultiIndex.from_frame(fake_network.trenches[["min_node_id", "max_node_id", "key"]])
     fake_network.trenches.index = mi
 
     cost_parameters = CostParameters()
     costs = get_costs(fake_network, cost_parameters)
     print(costs.get_materials_dataframe())
-    print(costs.get_materials_dataframe())
+    print(costs.get_labor_dataframe())
