@@ -651,7 +651,7 @@ def _find_shortest_path_to_cs(cs_look_up, g_box: networkx.MultiGraph, trench_cor
     return cs_fiber_cables
 
 
-def plot_fiber_network(fiber_graph, fiber_dc_graph, building_gdf, cabinet_look_up: Dict[int, StreetCabinet], ds_look_up,
+def plot_fiber_network(road_graph, building_fiber_graph, fiber_dc_graph, building_gdf, cabinet_look_up: Dict[int, StreetCabinet], ds_look_up,
                        cs_lookup = None):
     cabinet_list = list()
     for cluster_id, d in cabinet_look_up.items():
@@ -669,19 +669,20 @@ def plot_fiber_network(fiber_graph, fiber_dc_graph, building_gdf, cabinet_look_u
              "equipment_type": EquipmentType.DecentralLocation})
     ds_df = pd.DataFrame(ds_list)
 
-    ec = ['black' if 'highway' in d else
-          "grey" if "trench_crossing" in d and d["trench_crossing"] else
-          "pink" if "house_trench" in d and d["house_trench"] else
-          'blue' if "cable" in d and d["cable_type"] == CableType.SplitterToHouseDropCable else
-          "lime" if "cable" in d and d["cable_type"] == CableType.DSToSplitter96Cores else
-          'red' for _, _, _, d in fiber_graph.edges(keys=True, data=True)]
-
-    fig, ax = ox.plot_graph(fiber_graph, bgcolor='white', edge_color=ec,
-                            node_size=0, edge_linewidth=2.5, edge_alpha=0.8,
+    fig, ax = ox.plot_graph(road_graph, bgcolor='white', edge_color="lightgrey",
+                            node_size=0, edge_linewidth=0.8, edge_alpha=1,
                             show=False, close=False)
 
+    ec = ["grey" if "trench_crossing" in d and d["trench_crossing"] else
+          "pink" if "house_trench" in d and d["house_trench"] else
+          'blue' if "cable" in d and d["cable_type"] == CableType.SplitterToHouseDropCable else
+          'red' for _, _, _, d in building_fiber_graph.edges(keys=True, data=True)]
+    fig, ax = ox.plot_graph(building_fiber_graph, bgcolor=None, edge_color=ec,
+                            node_size=0, edge_linewidth=1.8, edge_alpha=1,
+                            show=False, close=False, ax=ax)
+
     fig, ax = ox.plot_graph(fiber_dc_graph, bgcolor=None, edge_color="lime",
-                            node_size=0, edge_linewidth=2.5, edge_alpha=0.8,
+                            node_size=0, edge_linewidth=2, edge_alpha=1,
                             show=False, close=False, ax=ax)
 
     fig, ax = ox.plot_footprints(building_gdf, ax=ax, color="burlywood", alpha=0.6, show=False, close=False)
