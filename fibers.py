@@ -675,17 +675,19 @@ def plot_fiber_network(fiber_graph, fiber_dc_graph, building_gdf, cabinet_look_u
           'blue' if "cable" in d and d["cable_type"] == CableType.SplitterToHouseDropCable else
           "lime" if "cable" in d and d["cable_type"] == CableType.DSToSplitter96Cores else
           'red' for _, _, _, d in fiber_graph.edges(keys=True, data=True)]
+
     fig, ax = ox.plot_graph(fiber_graph, bgcolor='white', edge_color=ec,
                             node_size=0, edge_linewidth=2.5, edge_alpha=0.8,
                             show=False, close=False)
-    ox.plot_footprints(building_gdf, ax=ax, color="burlywood", alpha=0.6)
-    # ax.scatter(x=round(trench_corner_gdf['x'].max(), 6), y=round(trench_corner_gdf['y'].min(), 6), s=120, color='red')
-    ax.scatter(cabinet_df.x, cabinet_df.x, s=30, color="m")
-    ax.scatter(ds_df.x, ds_df.y, s=70, color="yellow")
 
     fig, ax = ox.plot_graph(fiber_dc_graph, bgcolor=None, edge_color="lime",
                             node_size=0, edge_linewidth=2.5, edge_alpha=0.8,
                             show=False, close=False, ax=ax)
+
+    fig, ax = ox.plot_footprints(building_gdf, ax=ax, color="burlywood", alpha=0.6, show=False, close=False)
+
+    ax.scatter(cabinet_df.x, cabinet_df.x, s=70, color="red")
+    ax.scatter(ds_df.x, ds_df.y, s=70, color="yellow")
 
     return(fig)
 
@@ -718,4 +720,5 @@ if __name__ == "__main__":
         trench_network: TrenchNetwork = pickle.load(open("trench_network.p", "rb"))
 
     cost_parameters = CostParameters()
-    get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
+    fiber_network, fig = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
+    plt.show()
