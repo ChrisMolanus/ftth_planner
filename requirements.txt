@@ -114,6 +114,7 @@ setuptools=49.6.0=py39hcbf5309_3
 shapely=1.7.1=py39haadaec5_5
 six=1.16.0=pyh6c4a22f_0
 snuggs=1.4.7=py_0
+streamlit=1.1.0
 sqlite=3.36.0=h8ffe710_0
 tbb=2021.3.0=h2d74725_0
 threadpoolctl=2.2.0=pyh8a188c0_0
