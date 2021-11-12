@@ -21,11 +21,13 @@ def get_planning():
     trench_network = get_trench_network(g_box, building_gdf)
     trench_network_graph = add_trenches_to_network(trench_network, g_box)
     cost_parameters = CostParameters()
-    fiber_network, fig = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
+    fiber_network, fig, ax = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
     detailed_cost = get_costs(fiber_network, cost_parameters)
-    return detailed_cost, fig
+    return detailed_cost, fig, ax
+
 
 # Sidebar with coordinate/placename inputs
+st.sidebar.subheader('Input Coordinates')
 north_field, south_field = st.sidebar.columns(2)
 east_field, west_field = st.sidebar.columns(2)
 
@@ -41,33 +43,52 @@ st.subheader('Cognizant’s fiber network optimizer \n')
 
 
 # Sidebar inputs
+
 north = north_field.text_input('North','50.78694')
 south = south_field.text_input('South','50.77902')
 east = east_field.text_input('East', '4.48386')
 west = west_field.text_input('West', '4.49521')
 
-detailed_cost, fig = get_planning()
+detailed_cost, fig, ax = get_planning()
+
+# plot_legend = ax.legend()
+# st.pyplot(plot_legend)
 
 # Map with optimal fiber route
 st.subheader(f'Optimal fiber network route for [N:{north}, S:{south}, E:{east}, W:{west}] \n')
-col1, col2 = st.columns((2, 1))
-col1.pyplot(fig)
+# col1, col2 = st.columns((2, 1))
+st.pyplot(fig)
 # Map
+st.sidebar.subheader('Map')
 map_data = {'lat': [np.average([float(north),float(south)])], 'lon': [np.average([float(east),float(west)])]}
 map_df = pd.DataFrame(data=map_data)
-col2.map(map_df, zoom=15)
+st.sidebar.map(map_df, zoom=8)
 
+# Cost data
 st.header('Cost data \n')
-st.subheader('Material Costs \n')
+
+# cost dataframes
 materials_df = detailed_cost.get_materials_dataframe()
 materials_df.set_index('Type', inplace=True)
+materials_df.loc['Total'] = pd.Series(materials_df['Total Cost'].sum(), index = ['Total Cost'])
+# materials_df.loc[['Total'], ['Quantity', 'Quantity units']] = "-"
+
+
+labor_df = detailed_cost.get_labor_dataframe()
+labor_df.set_index('Type', inplace=True)
+labor_df.loc['Total'] = pd.Series(labor_df['Total Cost'].sum(), index = ['Total Cost'])
+# labor_df.replace('NA', '', regex=False, inplace=True)
+
+
+# Display dataframes
+st.subheader('Material cost breakdown \n')
 cols_materials = list(materials_df.columns.values)
 ms_mat = st.multiselect("Select dataframe columns", materials_df.columns.tolist(), default=cols_materials, key=1)
 st.dataframe(materials_df[ms_mat])
 
-st.subheader('Labour Costs \n')
-labor_df = detailed_cost.get_labor_dataframe()
-labor_df.set_index('Type', inplace=True)
+st.subheader('Labour cost breakdown \n')
 cols_labor = list(labor_df.columns.values)
 ms_lab = st.multiselect("Select dataframe columns", labor_df.columns.tolist(), default=cols_labor, key=2)
 st.dataframe(labor_df[ms_lab])
+
+
