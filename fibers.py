@@ -134,7 +134,7 @@ def _get_cs_location(trench_corner_gdf, ds_look_up: Dict[int, StreetCabinet]) ->
     """
 
     cs_gdf = trench_corner_gdf[trench_corner_gdf.x.max(), trench_corner_gdf.y.min()]
-
+    # trench_corner_gdf.x.idxmax(), trench_corner_gdf.y.minx()
 
 
     return ds_look_up
