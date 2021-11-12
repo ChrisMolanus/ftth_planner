@@ -514,7 +514,7 @@ def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], 
             edge["weight"] = (edge["length"] * (cost_parameters.fiber_install_per_km + cost_parameters.fiber_drop_pair_per_km))
         # update trenches_gdf["dig_weight"] to 0 for all the trench that were in the s_path(s)
         trenches_gdf["dig_weight"] = trenches_gdf["dig_weight"].mask(trenches_gdf["u"].isin(s_path), 0)\
-                                     .mask(trenches_gdf["v"].isin(s_path), 0)
+                                                               .mask(trenches_gdf["v"].isin(s_path), 0)
 
     return building_drop_cables
 
@@ -559,7 +559,7 @@ def _find_shortest_path_to_cabinets(ds_look_up, g_box: networkx.MultiGraph, tren
                             cost_parameters.fiber_install_per_km + cost_parameters.fiber_96core_per_km))
             # update trenches_gdf["dig_weight"] to 0 for all the trench that were in the s_path(s)
             trenches_gdf["dig_weight"] = trenches_gdf["dig_weight"].mask(trenches_gdf["u"].isin(s_path), 0)\
-                                         .mask(trenches_gdf["v"].isin(s_path), 0)
+                                                                   .mask(trenches_gdf["v"].isin(s_path), 0)
 
     return ds_fiber_cables
 
