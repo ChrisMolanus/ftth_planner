@@ -65,31 +65,34 @@ st.subheader(f'Optimal fiber network route for [N:{north}, S:{south}, E:{east}, 
 st.pyplot(fig)
 
 
-# Cost data
-st.header('Cost data \n')
-
 # cost dataframes
 materials_df = detailed_cost.get_materials_dataframe()
 materials_df.set_index('Type', inplace=True)
-materials_df.loc['Total'] = pd.Series(materials_df['Total Cost'].sum(), index = ['Total Cost'])
+materials_total = materials_df['Total Cost'].sum()
 # materials_df.loc[['Total'], ['Quantity', 'Quantity units']] = "-"
 
 
 labor_df = detailed_cost.get_labor_dataframe()
 labor_df.set_index('Type', inplace=True)
-labor_df.loc['Total'] = pd.Series(labor_df['Total Cost'].sum(), index = ['Total Cost'])
+labor_total = labor_df['Total Cost'].sum()
 # labor_df.replace('NA', '', regex=False, inplace=True)
 
 
 # Display dataframes
-st.subheader('Material cost breakdown \n')
+st.header('Material cost breakdown \n')
 cols_materials = list(materials_df.columns.values)
 ms_mat = st.multiselect("Select dataframe columns", materials_df.columns.tolist(), default=cols_materials, key=1)
 st.dataframe(materials_df[ms_mat])
 
-st.subheader('Labour cost breakdown \n')
+dummy, materials_total_col = st.columns([3, 1])
+materials_total_col.subheader("€{:,.2f}".format(materials_total))
+
+st.header('Labour cost breakdown \n')
 cols_labor = list(labor_df.columns.values)
 ms_lab = st.multiselect("Select dataframe columns", labor_df.columns.tolist(), default=cols_labor, key=2)
 st.dataframe(labor_df[ms_lab])
+
+dummy, labor_total_col = st.columns([3, 1])
+labor_total_col.subheader("€{:,.2f}".format(labor_total))
 
 
