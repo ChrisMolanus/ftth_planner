@@ -725,9 +725,11 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
         if street_name in street_trenches and len(street_trenches[street_name]) > 0:
             # Loop over every trench for this street and find the closest one
             for trench_index, trench in street_trenches[street_name].items():
-                new_closest_trench_info, distance = get_building_trench_distance(building_centroid_node, corner_by_id,
-                                                                                 distance, trench,  trench_index)
+                new_closest_trench_info, new_distance = get_building_trench_distance(building_centroid_node,
+                                                                                     corner_by_id, distance, trench,
+                                                                                     trench_index)
                 if new_closest_trench_info is not None:
+                    distance = new_distance
                     closest_trench_info = new_closest_trench_info
 
             # If building trench is suspiciously long look if we can find a closer trench.
@@ -735,14 +737,15 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
             if distance > 60.0:
                 for street_name_1 in street_trenches.keys():
                     for trench_index, trench in street_trenches[street_name_1].items():
-                        new_closest_trench_info, distance = get_building_trench_distance(building_centroid_node,
-                                                                                         corner_by_id, distance, trench,
-                                                                                         trench_index)
+                        new_closest_trench_info, new_distance = get_building_trench_distance(building_centroid_node,
+                                                                                             corner_by_id, distance,
+                                                                                             trench, trench_index)
                         if new_closest_trench_info is not None:
+                            distance = new_distance
                             closest_trench_info = new_closest_trench_info
 
             # It is possible we could not find a road trench for this building, geo fencing problem
-            if closest_trench_info is not None:
+            if closest_trench_info is not None and distance < 90:
                 if closest_trench_info['closest_trench'] not in building_by_closest_trench:
                     building_by_closest_trench[closest_trench_info['closest_trench']] = list()
                 building_by_closest_trench[closest_trench_info['closest_trench']].append(
@@ -762,6 +765,7 @@ def get_building_trench_distance(building_centroid_node, corner_by_id, current_s
     :return:
     """
     closest_trench_info = None
+    new_distance = float("inf")
     corner_u: TrenchCorner = corner_by_id[trench['u_for_edge']]
     corner_v: TrenchCorner = corner_by_id[trench['v_for_edge']]
     if 'geometry' not in trench:
@@ -774,7 +778,7 @@ def get_building_trench_distance(building_centroid_node, corner_by_id, current_s
             # Check if this trench is the closest one so far
             if new_distance < current_shortest_distance:
                 new_v_node = projected
-                current_shortest_distance = new_distance
+                #current_shortest_distance = new_distance
                 closest_trench = trench_index
                 closest_trench_info = {'building_centroid_node': building_centroid_node,
                                        'ref_new_v_node': new_v_node,
@@ -810,7 +814,7 @@ def get_building_trench_distance(building_centroid_node, corner_by_id, current_s
                                                'geometry': True,
                                                'segment_index': shortest_i,
                                                'ref_corner_u': corner_u}
-    return closest_trench_info, current_shortest_distance
+    return closest_trench_info, new_distance
 
 
 def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[TrenchInfo]],
