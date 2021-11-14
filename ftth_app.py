@@ -43,13 +43,17 @@ st.subheader('Cognizant’s fiber network optimizer \n')
 
 
 # Sidebar inputs
-
 north = north_field.text_input('North','50.78694')
 south = south_field.text_input('South','50.77902')
 east = east_field.text_input('East', '4.48386')
 west = west_field.text_input('West', '4.49521')
 
-detailed_cost, fig, ax = get_planning()
+# Map
+st.sidebar.subheader('Map')
+map_data = {'lat': [np.average([float(north),float(south)])], 'lon': [np.average([float(east),float(west)])]}
+map_df = pd.DataFrame(data=map_data)
+st.sidebar.map(map_df, zoom=8)
+
 detailed_cost, fig = get_planning()
 
 # plot_legend = ax.legend()
@@ -59,11 +63,7 @@ detailed_cost, fig = get_planning()
 st.subheader(f'Optimal fiber network route for [N:{north}, S:{south}, E:{east}, W:{west}] \n')
 # col1, col2 = st.columns((2, 1))
 st.pyplot(fig)
-# Map
-st.sidebar.subheader('Map')
-map_data = {'lat': [np.average([float(north),float(south)])], 'lon': [np.average([float(east),float(west)])]}
-map_df = pd.DataFrame(data=map_data)
-st.sidebar.map(map_df, zoom=8)
+
 
 # Cost data
 st.header('Cost data \n')
