@@ -97,12 +97,14 @@ plot_holder.pyplot(fig)
 # cost dataframes
 materials_df = detailed_cost.get_materials_dataframe()
 materials_df.set_index('Type', inplace=True)
+materials_df["Quantity"] = materials_df["Quantity"].round(decimals=2)
 materials_total = materials_df['Total Cost'].sum()
 # materials_df.loc[['Total'], ['Quantity', 'Quantity units']] = "-"
 
 
 labor_df = detailed_cost.get_labor_dataframe()
 labor_df.set_index('Type', inplace=True)
+labor_df["Quantity"] = labor_df["Quantity"].round(decimals=2)
 labor_total = labor_df['Total Cost'].sum()
 # labor_df.replace('NA', '', regex=False, inplace=True)
 
@@ -111,7 +113,7 @@ labor_total = labor_df['Total Cost'].sum()
 st.header('Material cost breakdown \n')
 cols_materials = list(materials_df.columns.values)
 ms_mat = st.multiselect("Select dataframe columns", materials_df.columns.tolist(), default=cols_materials, key=1)
-st.dataframe(materials_df[ms_mat])
+st.dataframe(materials_df[ms_mat].style.set_precision(2))
 
 dummy, materials_total_col = st.columns([3, 1])
 materials_total_col.subheader("€{:,.2f}".format(materials_total))
@@ -119,7 +121,7 @@ materials_total_col.subheader("€{:,.2f}".format(materials_total))
 st.header('Labour cost breakdown \n')
 cols_labor = list(labor_df.columns.values)
 ms_lab = st.multiselect("Select dataframe columns", labor_df.columns.tolist(), default=cols_labor, key=2)
-st.dataframe(labor_df[ms_lab])
+st.dataframe(labor_df[ms_lab].style.set_precision(2))
 
 dummy, labor_total_col = st.columns([3, 1])
 labor_total_col.subheader("€{:,.2f}".format(labor_total))
