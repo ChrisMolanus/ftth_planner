@@ -21,9 +21,9 @@ def get_planning():
     trench_network = get_trench_network(g_box, building_gdf)
     trench_network_graph = get_trench_to_network_graph(trench_network, g_box)
     cost_parameters = CostParameters()
-    fiber_network, fig, ax = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
+    fiber_network, fig = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
     detailed_cost = get_costs(fiber_network, cost_parameters)
-    return detailed_cost, fig, ax
+    return detailed_cost, fig
 
 
 # Sidebar with coordinate/placename inputs
@@ -50,6 +50,7 @@ east = east_field.text_input('East', '4.48386')
 west = west_field.text_input('West', '4.49521')
 
 detailed_cost, fig, ax = get_planning()
+detailed_cost, fig = get_planning()
 
 # plot_legend = ax.legend()
 # st.pyplot(plot_legend)
