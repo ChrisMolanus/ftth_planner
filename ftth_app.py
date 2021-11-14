@@ -18,13 +18,34 @@ def get_planning():
                                retain_all=False,
                                truncate_by_edge=True)
     building_gdf = ox.geometries_from_bbox(*box, tags={'building': True})
+    return g_box, building_gdf
+
+def get_trench_graph(g_box, building_gdf):
     trench_network = get_trench_network(g_box, building_gdf)
     trench_network_graph = get_trench_to_network_graph(trench_network, g_box)
+    return trench_network, trench_network_graph
+
+def get_fiber_planning(trench_network, building_gdf, g_box):
     cost_parameters = CostParameters()
     fiber_network, fig = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
     detailed_cost = get_costs(fiber_network, cost_parameters)
     return detailed_cost, fig
 
+def plot_1(g_box, building_gdf, trench_graph):
+    ec = ['black' if 'highway' in d else
+          'red' for _, _, _, d in g_box.edges(keys=True, data=True)]
+    fig, ax = ox.plot_graph(g_box, bgcolor='white', edge_color=ec,
+                            node_size=0, edge_linewidth=0.5,
+                            show=False, close=False)
+    if trench_graph is not None:
+        ec = ["grey" if "trench_crossing" in d and d["trench_crossing"] else
+              "blue" if "house_trench" in d else
+              'red' for _, _, _, d in trench_graph.edges(keys=True, data=True)]
+        fig, ax = ox.plot_graph(trench_graph, bgcolor='white', edge_color=ec,
+                                node_size=0, edge_linewidth=0.5,
+                                show=False, close=False, ax=ax)
+    ox.plot_footprints(building_gdf, ax=ax, color="orange", alpha=0.5)
+    return fig
 
 # Sidebar with coordinate/placename inputs
 st.sidebar.subheader('Input Coordinates')
@@ -54,7 +75,7 @@ map_data = {'lat': [np.average([float(north),float(south)])], 'lon': [np.average
 map_df = pd.DataFrame(data=map_data)
 st.sidebar.map(map_df, zoom=8)
 
-detailed_cost, fig = get_planning()
+
 
 # plot_legend = ax.legend()
 # st.pyplot(plot_legend)
@@ -62,7 +83,15 @@ detailed_cost, fig = get_planning()
 # Map with optimal fiber route
 st.subheader(f'Optimal fiber network route for [N:{north}, S:{south}, E:{east}, W:{west}] \n')
 # col1, col2 = st.columns((2, 1))
-st.pyplot(fig)
+g_box, building_gdf = get_planning()
+plot_holder = st.empty()
+plot_holder.pyplot(plot_1(g_box, building_gdf, None))
+
+trench_network, trench_network_graph = get_trench_graph(g_box,building_gdf)
+plot_holder.pyplot(plot_1(g_box, building_gdf, trench_network_graph))
+
+detailed_cost, fig = get_fiber_planning(trench_network, building_gdf, g_box )
+plot_holder.pyplot(fig)
 
 
 # cost dataframes
