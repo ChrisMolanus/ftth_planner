@@ -11,12 +11,14 @@ import matplotlib.pyplot as plt
 import math
 
 import pandas as pd
+import geopandas as gpd
 import pyproj
 from shapely.geometry import LineString
 
 distance_from_center_of_road = 0.0001
 geod = pyproj.Geod(ellps='WGS84')
-
+# zone 31 for benelux
+P = pyproj.Proj(proj='utm', zone=31, ellps='WGS84', preserve_units=True)
 
 def point_distance_from_line(line: Tuple[dict, dict], point: dict) -> float:
     """
@@ -70,17 +72,32 @@ def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, 
     y = center['y'] + (radius * math.sin(radian))
     return x, y
 
+def _LatLon_To_XY(Lat,Lon):
+  return P(Lat,Lon)
+
+def _XY_To_LatLon(x,y):
+  return P(x,y,inverse=True)
 
 def get_perpendicular_line(u_node: dict, v_node: dict, ref_point: dict) -> Tuple[dict, dict]:
-    dx = u_node['x'] - v_node['x']
-    dy = u_node['y'] - v_node['y']
+    """
+    Returns the projection of a point over a line, corresponding to the perpendicular line.
+    :param u_node: The start node of the vector
+    :param v_node: The end node of the vector
+    :param ref_point: The point we would like to project
+    :return: The projected point over the vector
+    """
+    x1, y1 = _LatLon_To_XY(u_node['x'], u_node['y'])
+    x2, y2 = _LatLon_To_XY(v_node['x'], v_node['y'])
+    x3, y3 = _LatLon_To_XY(ref_point['x'], ref_point['y'])
+    dx = x2 - x1
+    dy = y2 - y1
 
-    # Perpendicular line
-    # TODO: flipping dx and dy is probably not correct but the point looks worse if we correct it
-    dx1 = -1 * dy
-    dy1 = dx
-
-    return {'x': ref_point['x'], 'y': ref_point['y']}, {'x': ref_point['x'] + dx1, 'y': ref_point['y'] + dy1}
+    if (dy ** 2 + dx ** 2) != 0:
+        k = (dy * (x3 - x1) - (dx) * (y3 - y1)) / (dy ** 2 + dx ** 2)
+        x4 = x3 - k * dy
+        y4 = y3 + k * dx
+    px4, py4 = _XY_To_LatLon(x4, y4)
+    return {'x': ref_point['x'], 'y': ref_point['y']}, {'x': px4, 'y': py4}
 
 
 def point_on_line(u, v, c, return_distance=False):
@@ -1105,8 +1122,8 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     return TrenchNetwork(trench_corners, trenches, building_trenches_lookup, corner_by_id)
 
 
-def add_trenches_to_network(trench_network: TrenchNetwork,
-                            road_network: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
+def get_trench_to_network_graph(trench_network: TrenchNetwork,
+                                road_network: networkx.MultiDiGraph) -> networkx.MultiDiGraph:
     """
     Adds the trenches and nodes in the trench_network to an existing OSM Network
     :param trench_network: The Trench network
@@ -1114,17 +1131,20 @@ def add_trenches_to_network(trench_network: TrenchNetwork,
     :return: A combined MultiDiGraph
     """
     # Add trench corner nodes to network
+    building_fiber_graph = ox.graph_from_gdfs(gpd.GeoDataFrame(columns=["x", "y"]), gpd.GeoDataFrame(), graph_attrs=road_network.graph)
+
     for intersection_osmid, corners in trench_network.trenchCorners.items():
         for corner in corners:
             # TODO: addes nodes more then ones, but it should be ok since they have the same ID
-            road_network.add_node(**corner)
+            building_fiber_graph.add_node(**corner)
 
     # Add the trenches to the network
     osmid = 8945376
     for trench in trench_network.trenches:
         osmid += 1
-        road_network.add_edge(**trench, key=1, osmid=osmid)
-    return road_network
+        building_fiber_graph.add_edge(**trench, key=1, osmid=osmid)
+
+    return building_fiber_graph
 
 
 if __name__ == "__main__":
@@ -1137,14 +1157,19 @@ if __name__ == "__main__":
     building_gdf = ox.geometries_from_bbox(*box, tags={'building': True})
     trench_network = get_trench_network(g_box, building_gdf)
 
-    trench_graph = add_trenches_to_network(trench_network, g_box)
+    trench_graph = get_trench_to_network_graph(trench_network, g_box)
 
     ec = ['black' if 'highway' in d else
-          "grey" if "trench_crossing" in d and d["trench_crossing"]else
+          'red' for _, _, _, d in g_box.edges(keys=True, data=True)]
+    fig, ax = ox.plot_graph(g_box, bgcolor='white', edge_color=ec,
+                            node_size=0, edge_linewidth=0.5,
+                            show=False, close=False)
+
+    ec = ["grey" if "trench_crossing" in d and d["trench_crossing"]else
           "blue" if "house_trench" in d else
           'red' for _, _, _, d in trench_graph.edges(keys=True, data=True)]
     fig, ax = ox.plot_graph(trench_graph, bgcolor='white', edge_color=ec,
                             node_size=0, edge_linewidth=0.5,
-                            show=False, close=False)
+                            show=False, close=False, ax=ax)
     ox.plot_footprints(building_gdf, ax=ax, color="orange", alpha=0.5)
     plt.show()

@@ -8,7 +8,7 @@ import osmnx as ox
 from cost_parameters import CostParameters
 from costs import get_costs
 from fibers import get_fiber_network
-from trenches2 import get_trench_network, add_trenches_to_network
+from trenches2 import get_trench_network, get_trench_to_network_graph
 
 def get_planning():
     box = (float(north), float(south), float(east), float(west))
@@ -19,7 +19,7 @@ def get_planning():
                                truncate_by_edge=True)
     building_gdf = ox.geometries_from_bbox(*box, tags={'building': True})
     trench_network = get_trench_network(g_box, building_gdf)
-    trench_network_graph = add_trenches_to_network(trench_network, g_box)
+    trench_network_graph = get_trench_to_network_graph(trench_network, g_box)
     cost_parameters = CostParameters()
     fiber_network, fig, ax = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
     detailed_cost = get_costs(fiber_network, cost_parameters)
