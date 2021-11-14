@@ -23,8 +23,8 @@ from trenches2 import TrenchNetwork, TrenchCorner, get_trench_network
 
 
 class CableType(Enum):
-    CoreToDS = "Core To DS"
-    DSToSplitter96Cores = "DSToSplitter96Cores"
+    CoreToDS = "Core To DS Cable"
+    DSToSplitter96Cores = "DSToSplitter96Cores Cable"
     SplitterToHouseDropCable = "Splitter To House Drop Cable"
 
 
@@ -431,7 +431,7 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
     fiber_network.fibers[CableType.SplitterToHouseDropCable] = cables
     onts: List[ONT] = list()
     spliters: List[Splitter] = list()
-    streetcabinets: List[StreetCabinet] = list()
+    streetcabinets: List[StreetCabinet] = cabinet_look_up.values()
     fiber_network.equipment[EquipmentType.ONT] = onts
     fiber_network.equipment[EquipmentType.Splitter] = spliters
     fiber_network.equipment[EquipmentType.StreetCabinet] = streetcabinets

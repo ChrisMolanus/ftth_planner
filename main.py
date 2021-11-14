@@ -49,6 +49,8 @@ cost_parameters = CostParameters()
 fiber_network, fig = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
 
 detailed_cost = get_costs(fiber_network, cost_parameters)
+print(detailed_cost.get_materials_dataframe())
+print(detailed_cost.get_labor_dataframe())
 
 #detailed_report = get_detailed_report(detailed_cost, building_gdf)
 
