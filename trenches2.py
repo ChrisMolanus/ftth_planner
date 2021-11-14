@@ -725,63 +725,92 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
         if street_name in street_trenches and len(street_trenches[street_name]) > 0:
             # Loop over every trench for this street and find the closest one
             for trench_index, trench in street_trenches[street_name].items():
-                if trench_index not in building_by_closest_trench:
-                    building_by_closest_trench[trench_index] = list()
-                corner_u: TrenchCorner = corner_by_id[trench['u_for_edge']]
-                corner_v: TrenchCorner = corner_by_id[trench['v_for_edge']]
-                if 'geometry' not in trenches[trench_index]:
-                    # Get the intersection point between the road trench and a perpendicular line of the building
-                    perpendicular_line = get_perpendicular_line(corner_u, corner_v, building_centroid_node)
-                    projected = get_intersection_point2(perpendicular_line, (corner_u, corner_v))
-                    # Extra check to make sure we are not doing something wrong, might be a bug in the code
-                    if is_between2(corner_u, corner_v, projected):
-                        new_distance = node_distance(projected, building_centroid_node)
-                        # Check if this trench is the closest one so far
-                        if new_distance < distance:
-                            new_v_node = projected
-                            distance = new_distance
-                            closest_trench = trench_index
-                            closest_trench_info = {'building_centroid_node': building_centroid_node,
-                                                   'ref_new_v_node': new_v_node,
-                                                   'closest_trench': closest_trench,
-                                                   'geometry': False,
-                                                   'ref_corner_u': corner_u,
-                                                   'segment_index': None}
+                new_closest_trench_info, distance = get_building_trench_distance(building_centroid_node, corner_by_id,
+                                                                                 distance, trench,  trench_index)
+                if new_closest_trench_info is not None:
+                    closest_trench_info = new_closest_trench_info
 
-                else:
-                    # This is an attempt of finding a closest trench but for trenches that have geometry
-                    # it is not used if the g_box is no simplified
-                    trench = trenches[trench_index]
-                    coords = list(trench['geometry'].coords)
-                    last_node = None
-                    for segment_index in range(0, len(coords)):
-                        sub_x, sub_y = coords[segment_index]
-                        if last_node is None:
-                            last_node = {'x': sub_x, 'y': sub_y}
-                        else:
-                            sub_u_node = {'x': sub_x, 'y': sub_y}
-                            perpendicular_line = get_perpendicular_line(last_node, sub_u_node, building_centroid_node)
-                            projected = get_intersection_point2(perpendicular_line, (last_node, sub_u_node))
-                            if is_between2(last_node, sub_u_node, projected):
-                                new_distance = node_distance(projected, building_centroid_node)
-                                last_node = sub_u_node
-                                if new_distance < distance:
-                                    new_v_node = projected
-                                    distance = new_distance
-                                    shortest_i = segment_index
-                                    closest_trench = trench_index
-                                    closest_trench_info = {'building_centroid_node': building_centroid_node,
-                                                           'ref_new_v_node': new_v_node,
-                                                           'closest_trench': closest_trench,
-                                                           'geometry': True,
-                                                           'segment_index': shortest_i,
-                                                           'ref_corner_u': corner_u}
+            # If building trench is suspiciously long look if we can find a closer trench.
+            # Or if no trenches could be found for that street name, just scan all trenches
+            if distance > 60.0:
+                for street_name_1 in street_trenches.keys():
+                    for trench_index, trench in street_trenches[street_name_1].items():
+                        new_closest_trench_info, distance = get_building_trench_distance(building_centroid_node,
+                                                                                         corner_by_id, distance, trench,
+                                                                                         trench_index)
+                        if new_closest_trench_info is not None:
+                            closest_trench_info = new_closest_trench_info
 
             # It is possible we could not find a road trench for this building, geo fencing problem
             if closest_trench_info is not None:
+                if closest_trench_info['closest_trench'] not in building_by_closest_trench:
+                    building_by_closest_trench[closest_trench_info['closest_trench']] = list()
                 building_by_closest_trench[closest_trench_info['closest_trench']].append(
                     TrenchInfo(**closest_trench_info))
     return building_by_closest_trench
+
+
+def get_building_trench_distance(building_centroid_node, corner_by_id, current_shortest_distance, trench,
+                                 trench_index):
+    """
+    Determines the distance between the building and the trench
+    :param building_centroid_node:
+    :param corner_by_id:
+    :param current_shortest_distance:
+    :param trench:
+    :param trench_index:
+    :return:
+    """
+    closest_trench_info = None
+    corner_u: TrenchCorner = corner_by_id[trench['u_for_edge']]
+    corner_v: TrenchCorner = corner_by_id[trench['v_for_edge']]
+    if 'geometry' not in trench:
+        # Get the intersection point between the road trench and a perpendicular line of the building
+        perpendicular_line = get_perpendicular_line(corner_u, corner_v, building_centroid_node)
+        projected = get_intersection_point2(perpendicular_line, (corner_u, corner_v))
+        # Extra check to make sure we are not doing something wrong, might be a bug in the code
+        if is_between2(corner_u, corner_v, projected):
+            new_distance = node_distance(projected, building_centroid_node)
+            # Check if this trench is the closest one so far
+            if new_distance < current_shortest_distance:
+                new_v_node = projected
+                current_shortest_distance = new_distance
+                closest_trench = trench_index
+                closest_trench_info = {'building_centroid_node': building_centroid_node,
+                                       'ref_new_v_node': new_v_node,
+                                       'closest_trench': closest_trench,
+                                       'geometry': False,
+                                       'ref_corner_u': corner_u,
+                                       'segment_index': None}
+
+    else:
+        # This is an attempt of finding a closest trench but for trenches that have geometry
+        # it is not used if the g_box is no simplified
+        coords = list(trench['geometry'].coords)
+        last_node = None
+        for segment_index in range(0, len(coords)):
+            sub_x, sub_y = coords[segment_index]
+            if last_node is None:
+                last_node = {'x': sub_x, 'y': sub_y}
+            else:
+                sub_u_node = {'x': sub_x, 'y': sub_y}
+                perpendicular_line = get_perpendicular_line(last_node, sub_u_node, building_centroid_node)
+                projected = get_intersection_point2(perpendicular_line, (last_node, sub_u_node))
+                if is_between2(last_node, sub_u_node, projected):
+                    new_distance = node_distance(projected, building_centroid_node)
+                    last_node = sub_u_node
+                    if new_distance < current_shortest_distance:
+                        new_v_node = projected
+                        current_shortest_distance = new_distance
+                        shortest_i = segment_index
+                        closest_trench = trench_index
+                        closest_trench_info = {'building_centroid_node': building_centroid_node,
+                                               'ref_new_v_node': new_v_node,
+                                               'closest_trench': closest_trench,
+                                               'geometry': True,
+                                               'segment_index': shortest_i,
+                                               'ref_corner_u': corner_u}
+    return closest_trench_info, current_shortest_distance
 
 
 def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[TrenchInfo]],
