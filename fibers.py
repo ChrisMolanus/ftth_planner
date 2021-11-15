@@ -23,8 +23,8 @@ from trenches2 import TrenchNetwork, TrenchCorner, get_trench_network
 
 
 class CableType(Enum):
-    CoreToDS = "Core To DS"
-    DSToSplitter96Cores = "DSToSplitter96Cores"
+    CoreToDS = "Core To DS Cable"
+    DSToSplitter96Cores = "DSToSplitter96Cores Cable"
     SplitterToHouseDropCable = "Splitter To House Drop Cable"
 
 
@@ -126,18 +126,109 @@ class DecentralLocation(Equipment):
         self.trench_corner = trench_corner
 
 
-def _get_cs_location(trench_corner_gdf, ds_look_up: Dict[int, StreetCabinet]) -> Dict[int, StreetCabinet]:
+class CentralLocation(Equipment):
+    def __init__(self, trench_corner: TrenchCorner, decentral_locations: List[DecentralLocation]):
+        """
+        A Decentralized location
+        :param trench_corner: The trench corner this DS is on
+        :param street_cabinets: The Street cabinets that are connected to this DS
+        """
+        super(CentralLocation, self).__init__(EquipmentType.CentralLocation)
+        self.decentral_locations = decentral_locations
+        self.trench_corner = trench_corner
+
+
+def _get_co_location(trench_corner_gdf, ds_look_up: Dict[int, StreetCabinet],
+                     central_location_candidates: pd.DataFrame) -> Dict[int, StreetCabinet]:
     """
     Create a Central Office Location
     :param trench_network: The Trench Network
     :param ds_look_up
     """
 
-    cs_gdf = trench_corner_gdf[trench_corner_gdf.x.max(), trench_corner_gdf.y.min()]
-    # trench_corner_gdf.x.idxmax(), trench_corner_gdf.y.minx()
+    ds_list = list()
+    for ds_id, ds in ds_look_up.items():
+        ds_list.append({"cabinet_id": ds_id, **ds.trench_corner})
 
+    ds_df = pd.DataFrame.from_records(ds_list)
 
-    return ds_look_up
+    central_location_candidates_gdf = gpd.GeoDataFrame(building_trenches_df,
+                                                         geometry=gpd.points_from_xy(
+                                                             building_trenches_df.x,
+                                                             building_trenches_df.y))
+
+    from sklearn.cluster import DBSCAN
+    clustering = DBSCAN(eps=3, min_samples=1).fit(ds_df[["x", "y"]])
+    print(clustering.labels_)
+    print(clustering)
+
+    ds_df["ds_id"] = clustering.labels_
+
+    co_ids = ds_df["ds_id"].unique()
+    co_point = list()
+    for co_id in co_ids:
+        points = ds_df[ds_df.ds_id == co_id]
+        x = np.max(points.x) / len(points)
+        y = np.min(points.y) / len(points)
+        co_point.append({"x": x, "y": y, "co_id": co_id, "ds_ids": set(points.cabinet_id)})
+
+    co_point_df = pd.DataFrame(co_point)
+    co_point_gdf = gpd.GeoDataFrame(co_point_df,
+                                       geometry=gpd.points_from_xy(
+                                           co_point_df.x,
+                                           co_point_df.y))
+
+    co_point_distance = ckdnearest(central_location_candidates_gdf, co_point_gdf)
+    # Find the street cabinet candidates (corners of houses) that is closest to the centroid
+    idx = co_point_distance.groupby('co_id', sort=False)["dist"].transform(min) == \
+          co_point_distance['dist']
+    co_locations_ids = co_point_distance.loc[idx, ['street_corner_id', 'co_id', "ds_ids"]]
+    co_locations_ids.rename(columns={'street_corner_id': "co_corner_id"}, inplace=True)
+
+    co_look_up: Dict[int, DecentralLocation] = dict()
+    for index, row in co_locations_ids.iterrows():
+        ds = list()
+        for ds_id in row["ds_ids"]:
+            ds.append(ds_look_up[ds_id])
+        co_look_up[row['co_id']] = CentralLocation(trench_corner=trench_network.corner_by_id[row['co_corner_id']],
+                                                     decentral_locations=ds)
+
+    # co_look_up = trench_corner_gdf.loc[trench_corner_gdf.groupby('x')['y'].idxmax()].head(1)
+
+    return co_look_up
+
+def _find_shortest_path_to_co(co_look_up, g_box: networkx.MultiGraph, trench_corner_gdf: gpd.GeoDataFrame,
+                              trenches_gdf: gpd.GeoDataFrame) -> List[Dict[str, Any]]:
+    """
+    Find the shortest path from each decentrale to its associated central location
+    :param ds_look_up: The Decentral Locations
+    :param g_box: The OSMX graph
+    :param trench_corner_gdf:
+    :param trenches_gdf:
+    :return: A list of last mile fiber routes
+    """
+    # Make a graph so we can find teh shortest paths
+    graph = ox.graph_from_gdfs(trench_corner_gdf, trenches_gdf, graph_attrs=g_box.graph)
+    # make sure to convert to undirected graph
+    graph = graph.to_undirected()
+    co_fiber_cables = list()
+    for index, ds in co_look_up.items():
+        ds_corner_id = ds.trench_corner['node_for_adding']
+        for sc_index in ds.street_cabinets:
+            street_cabinet_id = sc_index.cabinet_id
+            street_cabinet_corner_id = sc_index.trench_corner
+            cabinet_corner_id = street_cabinet_corner_id['node_for_adding']
+            try:
+                s_path = nx.algorithms.shortest_paths.shortest_path(graph, source=cabinet_corner_id,
+                                                                    target=ds_corner_id, weight="length")
+                co_fiber_cables.append(
+                    {"cabinet_corner_id": cabinet_corner_id, "ds_id": ds, "ds_corner_id": ds_corner_id,
+                     "shortest_path": s_path, "decentral_locations": ds, 'street_cabinet_id': street_cabinet_id})
+            except networkx.exception.NetworkXNoPath:
+                pass
+                # print(f"No drop cable path could be found for building_index {building_index}")
+
+    return co_fiber_cables
 
 
 def _get_ds_locations(trench_network: TrenchNetwork, cabinet_look_up: Dict[int, StreetCabinet],
@@ -222,26 +313,37 @@ def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParame
 
     ds_look_up = _get_ds_locations(trench_network, cabinet_look_up, building_trenches_df)
 
+    co_look_up = _get_co_location(trench_network)
+
     # Find shortest paths between the buildings and the cabinets
     fiber_network, building_fiber_graph = _get_drop_cable_network(building_trenches_with_cabinet_df,
-                                                         g_box,
-                                                         trench_corner_gdf,
-                                                         trenches_df,
-                                                         trenches_gdf,
-                                                         cabinet_look_up,
-                                                         cost_parameters)
+                                                                  g_box,
+                                                                  trench_corner_gdf,
+                                                                  trenches_df,
+                                                                  trenches_gdf,
+                                                                  cabinet_look_up,
+                                                                  cost_parameters)
 
     fiber_network.equipment[EquipmentType.DecentralLocation] = list(ds_look_up.values())
 
     fiber_network, fiber_dc_graph = _get_ds_cable_network(fiber_network,
-                                                       g_box,
-                                                       trench_corner_gdf,
-                                                       trenches_df,
-                                                       trenches_gdf,
-                                                       ds_look_up,
-                                                       cost_parameters)
+                                                          g_box,
+                                                          trench_corner_gdf,
+                                                          trenches_df,
+                                                          trenches_gdf,
+                                                          ds_look_up,
+                                                          cost_parameters)
 
-    fig = plot_fiber_network(g_box, building_fiber_graph, fiber_dc_graph, building_gdf, cabinet_look_up, ds_look_up, None)
+    fiber_network, fiber_co_graph = _get_co_cable_network(fiber_network,
+                                                          g_box,
+                                                          trench_corner_gdf,
+                                                          trenches_df,
+                                                          trenches_gdf,
+                                                          co_look_up,
+                                                          cost_parameters)
+
+    fig = plot_fiber_network(g_box, building_fiber_graph, fiber_dc_graph, building_gdf, cabinet_look_up, ds_look_up,
+                             None)
 
     return fiber_network, fig
 
@@ -302,7 +404,8 @@ def weight_calculator(length, trench_crossing, house_trench, cost_parameters: Co
         return length * cost_parameters.dig_per_road_crossing
 
 
-def _get_trench_dataframe(trench_network: TrenchNetwork, cost_parameters: CostParameters) -> Union[pd.DataFrame, gpd.GeoDataFrame]:
+def _get_trench_dataframe(trench_network: TrenchNetwork, cost_parameters: CostParameters) -> Union[
+    pd.DataFrame, gpd.GeoDataFrame]:
     """
     Create Trenches Dataframes from trench_network.trenches
     :param trench_network: The Trench Network created by trenches.py
@@ -318,11 +421,13 @@ def _get_trench_dataframe(trench_network: TrenchNetwork, cost_parameters: CostPa
         linestring = LineString([[u_node['x'], u_node['y']], [v_node['x'], v_node['y']]])
         linestrings.append(linestring)
     trenches_df["geometry"] = linestrings
-    trenches_df["dig_weight"] = trenches_df.apply(lambda row: weight_calculator(row['length'], row['trench_crossing'], row["house_trench"], cost_parameters), axis=1)
+    trenches_df["dig_weight"] = trenches_df.apply(
+        lambda row: weight_calculator(row['length'], row['trench_crossing'], row["house_trench"], cost_parameters),
+        axis=1)
     trenches_gdf = gpd.GeoDataFrame(trenches_df)
     trenches_gdf.rename({"u_for_edge": "u", "v_for_edge": "v"}, inplace=True, axis=1)
     trenches_gdf['key'] = 1
-    #trenches_gdf.set_index(['u', 'v', 'key'], inplace=True)
+    # trenches_gdf.set_index(['u', 'v', 'key'], inplace=True)
 
     trenches_gdf["min_node_id"] = trenches_gdf[['u', 'v']].min(axis=1)
     trenches_gdf["max_node_id"] = trenches_gdf[['u', 'v']].max(axis=1)
@@ -401,8 +506,10 @@ def _get_street_cabinets(trench_network: TrenchNetwork,
 
 
 def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.MultiGraph,
-                            trench_corner_gdf: gpd.GeoDataFrame, trenches_df: pd.DataFrame, trenches_gdf: gpd.GeoDataFrame,
-                            cabinet_look_up: Dict[int, StreetCabinet], cost_parameters: CostParameters) -> Union[FiberNetwork, networkx.MultiGraph]:
+                            trench_corner_gdf: gpd.GeoDataFrame, trenches_df: pd.DataFrame,
+                            trenches_gdf: gpd.GeoDataFrame,
+                            cabinet_look_up: Dict[int, StreetCabinet], cost_parameters: CostParameters) -> Union[
+    FiberNetwork, networkx.MultiGraph]:
     """
     Create a last mile optical network which is cables form splitters to buildings
     :param building_trenches_df: The GeoPandas Dataframe of buildings with cabinet IDs
@@ -431,7 +538,7 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
     fiber_network.fibers[CableType.SplitterToHouseDropCable] = cables
     onts: List[ONT] = list()
     spliters: List[Splitter] = list()
-    streetcabinets: List[StreetCabinet] = list()
+    streetcabinets: List[StreetCabinet] = cabinet_look_up.values()
     fiber_network.equipment[EquipmentType.ONT] = onts
     fiber_network.equipment[EquipmentType.Splitter] = spliters
     fiber_network.equipment[EquipmentType.StreetCabinet] = streetcabinets
@@ -454,7 +561,7 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
             if len(trench) > 0:
                 length += trench.iloc[0].length
                 building_fiber_graph.add_edge(pair[0], pair[1], 1, name="Fiber", cable=True,
-                                     cable_type=CableType.SplitterToHouseDropCable)
+                                              cable_type=CableType.SplitterToHouseDropCable)
                 sub_cable_dict.append({"u": pair[0], "v": pair[1], "key": 1, "name": "Fiber", "cable": True,
                                        "cable_type": CableType.SplitterToHouseDropCable})
             else:
@@ -475,7 +582,8 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
 
 def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], g_box: networkx.MultiGraph,
                                      building_trenches_df: pd.DataFrame, trench_corner_gdf: gpd.GeoDataFrame,
-                                     trenches_gdf: gpd.GeoDataFrame, cost_parameters: CostParameters) -> List[Dict[str, Any]]:
+                                     trenches_gdf: gpd.GeoDataFrame, cost_parameters: CostParameters) -> List[
+    Dict[str, Any]]:
     """
     Find the shortest path from each building to its associated cabinet
     :param cabinet_look_up: The Street Cabinets
@@ -501,7 +609,8 @@ def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], 
         cabinet_corner = cabinet_look_up[cabinet_id].trench_corner
         cabinet_corner_id = cabinet_corner['node_for_adding']
         try:
-            s_path = nx.algorithms.shortest_paths.shortest_path(graph, source=house_node_id, target=cabinet_corner_id, weight="weight")
+            s_path = nx.algorithms.shortest_paths.shortest_path(graph, source=house_node_id, target=cabinet_corner_id,
+                                                                weight="weight")
             building_drop_cables.append(
                 {"building_corner_id": house_node_id, "cabinet_id": cabinet_id, "cabinet_corner_id": cabinet_corner_id,
                  "shortest_path": s_path, "building_index": building_index})
@@ -511,16 +620,18 @@ def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], 
         # update graph edge "weight" for every edge in s_path by removing the one time cost for digging
         for pair in list(zip(s_path[::1], s_path[1::1])):
             edge = graph.edges[pair[0], pair[1], 1]
-            edge["weight"] = (edge["length"] * (cost_parameters.fiber_install_per_km + cost_parameters.fiber_drop_pair_per_km))
+            edge["weight"] = (edge["length"] * (
+                        cost_parameters.fiber_install_per_km + cost_parameters.fiber_drop_pair_per_km))
         # update trenches_gdf["dig_weight"] to 0 for all the trench that were in the s_path(s)
-        trenches_gdf["dig_weight"] = trenches_gdf["dig_weight"].mask(trenches_gdf["u"].isin(s_path), 0)\
-                                                               .mask(trenches_gdf["v"].isin(s_path), 0)
+        trenches_gdf["dig_weight"] = trenches_gdf["dig_weight"].mask(trenches_gdf["u"].isin(s_path), 0) \
+            .mask(trenches_gdf["v"].isin(s_path), 0)
 
     return building_drop_cables
 
 
 def _find_shortest_path_to_cabinets(ds_look_up, g_box: networkx.MultiGraph, trench_corner_gdf: gpd.GeoDataFrame,
-                                    trenches_gdf: gpd.GeoDataFrame, cost_parameters: CostParameters) -> List[Dict[str, Any]]:
+                                    trenches_gdf: gpd.GeoDataFrame, cost_parameters: CostParameters) -> List[
+    Dict[str, Any]]:
     """
     Find the shortest path from each street cabinet to its associated decentral location
     :param ds_look_up: The Street Cabinets
@@ -556,17 +667,18 @@ def _find_shortest_path_to_cabinets(ds_look_up, g_box: networkx.MultiGraph, tren
             for pair in list(zip(s_path[::1], s_path[1::1])):
                 edge = graph.edges[pair[0], pair[1], 1]
                 edge["weight"] = (edge["length"] * (
-                            cost_parameters.fiber_install_per_km + cost_parameters.fiber_96core_per_km))
+                        cost_parameters.fiber_install_per_km + cost_parameters.fiber_96core_per_km))
             # update trenches_gdf["dig_weight"] to 0 for all the trench that were in the s_path(s)
-            trenches_gdf["dig_weight"] = trenches_gdf["dig_weight"].mask(trenches_gdf["u"].isin(s_path), 0)\
-                                                                   .mask(trenches_gdf["v"].isin(s_path), 0)
+            trenches_gdf["dig_weight"] = trenches_gdf["dig_weight"].mask(trenches_gdf["u"].isin(s_path), 0) \
+                .mask(trenches_gdf["v"].isin(s_path), 0)
 
     return ds_fiber_cables
 
 
 def _get_ds_cable_network(fiber_network: FiberNetwork(), g_box: networkx.MultiGraph,
                           trench_corner_gdf: gpd.GeoDataFrame, trenches_df, trenches_gdf,
-                          ds_look_up: Dict[int, StreetCabinet], cost_parameters: CostParameters) -> Union[FiberNetwork, networkx.MultiGraph]:
+                          ds_look_up: Dict[int, StreetCabinet], cost_parameters: CostParameters) -> Union[
+    FiberNetwork, networkx.MultiGraph]:
     """
     Create a last mile optical network which is cables form splitters to buildings
     :param building_trenches_df: The GeoPandas Dataframe of buildings with cabinet IDs
@@ -578,7 +690,8 @@ def _get_ds_cable_network(fiber_network: FiberNetwork(), g_box: networkx.MultiGr
     :param cost_parameters: The cost parameters
     :return: A Fiber Network object and a Fiber graph as a NetworkX graph
     """
-    ds_fiber_cables = _find_shortest_path_to_cabinets(ds_look_up, g_box, trench_corner_gdf, trenches_gdf, cost_parameters)
+    ds_fiber_cables = _find_shortest_path_to_cabinets(ds_look_up, g_box, trench_corner_gdf, trenches_gdf,
+                                                      cost_parameters)
 
     fiber_dc_graph = ox.graph_from_gdfs(trench_corner_gdf, gpd.GeoDataFrame(), graph_attrs=g_box.graph)
 
@@ -608,7 +721,7 @@ def _get_ds_cable_network(fiber_network: FiberNetwork(), g_box: networkx.MultiGr
             trench = trench_look_up[trench_look_up.index == trench_id]
             length += trench.iloc[0].length
             fiber_dc_graph.add_edge(pair[0], pair[1], 1, name="DS_Fiber", cable=True,
-                                 cable_type=CableType.DSToSplitter96Cores)
+                                    cable_type=CableType.DSToSplitter96Cores)
             sub_cable_dict.append({"u": pair[0], "v": pair[1], "key": 2, "name": "DS_Fiber", "cable": True,
                                    "cable_type": CableType.DSToSplitter96Cores})
 
@@ -622,42 +735,9 @@ def _get_ds_cable_network(fiber_network: FiberNetwork(), g_box: networkx.MultiGr
     return fiber_network, fiber_dc_graph
 
 
-def _find_shortest_path_to_cs(cs_look_up, g_box: networkx.MultiGraph, trench_corner_gdf: gpd.GeoDataFrame,
-                              trenches_gdf: gpd.GeoDataFrame) -> List[Dict[str, Any]]:
-    """
-    Find the shortest path from each decentrale to its associated central location
-    :param ds_look_up: The Decentral Locations
-    :param g_box: The OSMX graph
-    :param trench_corner_gdf:
-    :param trenches_gdf:
-    :return: A list of last mile fiber routes
-    """
-    # Make a graph so we can find teh shortest paths
-    graph = ox.graph_from_gdfs(trench_corner_gdf, trenches_gdf, graph_attrs=g_box.graph)
-    # make sure to convert to undirected graph
-    graph = graph.to_undirected()
-    cs_fiber_cables = list()
-    for index, ds in cs_look_up.items():
-        ds_corner_id = ds.trench_corner['node_for_adding']
-        for sc_index in ds.street_cabinets:
-            street_cabinet_id = sc_index.cabinet_id
-            street_cabinet_corner_id = sc_index.trench_corner
-            cabinet_corner_id = street_cabinet_corner_id['node_for_adding']
-            try:
-                s_path = nx.algorithms.shortest_paths.shortest_path(graph, source=cabinet_corner_id,
-                                                                    target=ds_corner_id, weight="length")
-                cs_fiber_cables.append(
-                    {"cabinet_corner_id": cabinet_corner_id, "ds_id": ds, "ds_corner_id": ds_corner_id,
-                     "shortest_path": s_path, "decentral_locations": ds, 'street_cabinet_id': street_cabinet_id})
-            except networkx.exception.NetworkXNoPath:
-                pass
-                # print(f"No drop cable path could be found for building_index {building_index}")
-
-    return cs_fiber_cables
-
-
-def plot_fiber_network(road_graph, building_fiber_graph, fiber_dc_graph, building_gdf, cabinet_look_up: Dict[int, StreetCabinet], ds_look_up,
-                       cs_lookup = None):
+def plot_fiber_network(road_graph, building_fiber_graph, fiber_dc_graph, building_gdf,
+                       cabinet_look_up: Dict[int, StreetCabinet], ds_look_up,
+                       cs_lookup=None):
     cabinet_list = list()
     for cluster_id, d in cabinet_look_up.items():
         node = d.trench_corner
@@ -695,7 +775,7 @@ def plot_fiber_network(road_graph, building_fiber_graph, fiber_dc_graph, buildin
     ax.scatter(cabinet_df.x, cabinet_df.y, s=35, color="m")
     ax.scatter(ds_df.x, ds_df.y, s=70, color="yellow")
 
-    return(fig)
+    return (fig)
 
 
 if __name__ == "__main__":
