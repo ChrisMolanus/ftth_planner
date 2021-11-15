@@ -92,6 +92,7 @@ trench_network, trench_network_graph = get_trench_graph(g_box, building_gdf)
 plot_holder.pyplot(plot_1(g_box, building_gdf, trench_network_graph))
 
 detailed_cost, fig = get_fiber_planning(trench_network, building_gdf, g_box )
+fig.legend(loc='lower center', fontsize='x-small')
 plot_holder.pyplot(fig)
 
 

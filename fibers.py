@@ -692,8 +692,10 @@ def plot_fiber_network(road_graph, building_fiber_graph, fiber_dc_graph, buildin
 
     fig, ax = ox.plot_footprints(building_gdf, ax=ax, color="burlywood", alpha=0.6, show=False, close=False)
 
-    ax.scatter(cabinet_df.x, cabinet_df.y, s=35, color="m")
-    ax.scatter(ds_df.x, ds_df.y, s=70, color="yellow")
+    ax.scatter(None, None, label='Splitter to House Drop Cable', color='blue')
+    ax.scatter(None, None, label='DSToSplitter96Cores Cable', color='lime')
+    ax.scatter(cabinet_df.x, cabinet_df.y, s=35, color="m", label='Street Cabinet')
+    ax.scatter(ds_df.x, ds_df.y, s=70, color="yellow", label='Decentral Location')
 
     return(fig)
 
