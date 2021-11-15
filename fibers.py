@@ -299,7 +299,7 @@ def weight_calculator(length, trench_crossing, house_trench, cost_parameters: Co
     elif house_trench:
         return length * cost_parameters.dig_building_trench_per_km
     else:
-        return length * cost_parameters.dig_per_road_crossing
+        return length * cost_parameters.dig_road_side_trench_per_km
 
 
 def _get_trench_dataframe(trench_network: TrenchNetwork, cost_parameters: CostParameters) -> Union[pd.DataFrame, gpd.GeoDataFrame]:
