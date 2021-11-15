@@ -334,13 +334,13 @@ def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParame
                                                           ds_look_up,
                                                           cost_parameters)
 
-    fiber_network, fiber_co_graph = _get_co_cable_network(fiber_network,
-                                                          g_box,
-                                                          trench_corner_gdf,
-                                                          trenches_df,
-                                                          trenches_gdf,
-                                                          co_look_up,
-                                                          cost_parameters)
+    # fiber_network, fiber_co_graph = _get_co_cable_network(fiber_network,
+    #                                                       g_box,
+    #                                                       trench_corner_gdf,
+    #                                                       trenches_df,
+    #                                                       trenches_gdf,
+    #                                                       co_look_up,
+    #                                                       cost_parameters)
 
     fig = plot_fiber_network(g_box, building_fiber_graph, fiber_dc_graph, building_gdf, cabinet_look_up, ds_look_up,
                              None)
@@ -582,8 +582,8 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
 
 def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], g_box: networkx.MultiGraph,
                                      building_trenches_df: pd.DataFrame, trench_corner_gdf: gpd.GeoDataFrame,
-                                     trenches_gdf: gpd.GeoDataFrame, cost_parameters: CostParameters) -> List[
-    Dict[str, Any]]:
+                                     trenches_gdf: gpd.GeoDataFrame, cost_parameters: CostParameters) \
+                                     -> List[Dict[str, Any]]:
     """
     Find the shortest path from each building to its associated cabinet
     :param cabinet_look_up: The Street Cabinets
