@@ -39,14 +39,14 @@ def plot_1(ref_g_box, ref_building_gdf, trench_graph):
     ec = ['black' if 'highway' in d else
           'red' for _, _, _, d in ref_g_box.edges(keys=True, data=True)]
     ref_fig, ax = ox.plot_graph(ref_g_box, bgcolor='white', edge_color=ec,
-                                node_size=0, edge_linewidth=0.8,
+                                node_size=0, edge_linewidth=0.6,
                                 show=False, close=False)
     if trench_graph is not None:
         ec = ["grey" if "trench_crossing" in d and d["trench_crossing"] else
               "blue" if "house_trench" in d else
               'red' for _, _, _, d in trench_graph.edges(keys=True, data=True)]
         ref_fig, ax = ox.plot_graph(trench_graph, bgcolor='white', edge_color=ec,
-                                    node_size=0, edge_linewidth=0.8,
+                                    node_size=0, edge_linewidth=0.6,
                                     show=False, close=False, ax=ax)
     ox.plot_footprints(building_gdf, ax=ax, color="burlywood", alpha=0.6, show=False, close=False)
     return ref_fig
