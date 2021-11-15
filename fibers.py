@@ -130,16 +130,15 @@ class CentralLocation(Equipment):
     def __init__(self, trench_corner: TrenchCorner, decentral_locations: List[DecentralLocation]):
         """
         A Decentralized location
-        :param trench_corner: The trench corner this DS is on
-        :param street_cabinets: The Street cabinets that are connected to this DS
+        :param trench_corner: The trench corner this CentralLoc is on
+        :param decentralize locations: The DS that are connected to this CentralLocation
         """
         super(CentralLocation, self).__init__(EquipmentType.CentralLocation)
         self.decentral_locations = decentral_locations
         self.trench_corner = trench_corner
 
 
-def _get_co_location(trench_corner_gdf, ds_look_up: Dict[int, StreetCabinet],
-                     central_location_candidates: pd.DataFrame) -> Dict[int, StreetCabinet]:
+def _get_co_location(trench_corner_gdf, ds_look_up: Dict[int, DecentralLocation]) -> Dict[int, StreetCabinet]:
     """
     Create a Central Office Location
     :param trench_network: The Trench Network
@@ -148,50 +147,45 @@ def _get_co_location(trench_corner_gdf, ds_look_up: Dict[int, StreetCabinet],
 
     ds_list = list()
     for ds_id, ds in ds_look_up.items():
-        ds_list.append({"cabinet_id": ds_id, **ds.trench_corner})
+        ds_list.append({"ds_ids": ds_id, **ds.trench_corner})
 
     ds_df = pd.DataFrame.from_records(ds_list)
+    ds_gdf = gpd.GeoDataFrame(ds_df, geometry=gpd.points_from_xy(ds_df.x,
+                                                                 ds_df.y))
 
-    central_location_candidates_gdf = gpd.GeoDataFrame(building_trenches_df,
-                                                         geometry=gpd.points_from_xy(
-                                                             building_trenches_df.x,
-                                                             building_trenches_df.y))
+    central_location_candidate_gdf = trench_corner_gdf.loc[trench_corner_gdf.groupby('x')['y'].idxmax()].head(1)
+    central_location_candidate_gdf['co_id'] = 999
+    central_location_candidate_gdf.reset_index(level=0, inplace=True)
+    central_location_candidate_gdf.rename(columns={'node_for_adding': "co_corner_id"}, inplace=True)
 
-    from sklearn.cluster import DBSCAN
-    clustering = DBSCAN(eps=3, min_samples=1).fit(ds_df[["x", "y"]])
-    print(clustering.labels_)
-    print(clustering)
+    # central_location_candidate_gdf.merge(ds_gdf)
 
-    ds_df["ds_id"] = clustering.labels_
+    co_point_distance = ckdnearest(central_location_candidate_gdf, ds_gdf)
+    co_locations_ids = co_point_distance.loc[co_point_distance.index, ['co_corner_id', 'co_id', 'ds_ids']]
 
-    co_ids = ds_df["ds_id"].unique()
-    co_point = list()
-    for co_id in co_ids:
-        points = ds_df[ds_df.ds_id == co_id]
-        x = np.max(points.x) / len(points)
-        y = np.min(points.y) / len(points)
-        co_point.append({"x": x, "y": y, "co_id": co_id, "ds_ids": set(points.cabinet_id)})
-
-    co_point_df = pd.DataFrame(co_point)
-    co_point_gdf = gpd.GeoDataFrame(co_point_df,
-                                       geometry=gpd.points_from_xy(
-                                           co_point_df.x,
-                                           co_point_df.y))
-
-    co_point_distance = ckdnearest(central_location_candidates_gdf, co_point_gdf)
-    # Find the street cabinet candidates (corners of houses) that is closest to the centroid
-    idx = co_point_distance.groupby('co_id', sort=False)["dist"].transform(min) == \
-          co_point_distance['dist']
-    co_locations_ids = co_point_distance.loc[idx, ['street_corner_id', 'co_id', "ds_ids"]]
-    co_locations_ids.rename(columns={'street_corner_id': "co_corner_id"}, inplace=True)
+    # ds_look_up: Dict[int, DecentralLocation] = dict()
+    # for index, row in dc_locations_ids.iterrows():
+    #     sc = list()
+    #     for cabinet_id in row["cabinet_ids"]:
+    #         sc.append(cabinet_look_up[cabinet_id])
+    #     ds_look_up[row['ds_id']] = DecentralLocation(trench_corner=trench_network.corner_by_id[row['ds_corner_id']],
+    #                                                  street_cabinets=sc)
 
     co_look_up: Dict[int, DecentralLocation] = dict()
     for index, row in co_locations_ids.iterrows():
         ds = list()
-        for ds_id in row["ds_ids"]:
+        for ds_id in co_locations_ids['ds_ids']:
             ds.append(ds_look_up[ds_id])
-        co_look_up[row['co_id']] = CentralLocation(trench_corner=trench_network.corner_by_id[row['co_corner_id']],
+        ds_look_up[row['ds_id']] = CentralLocation(trench_corner=trench_network.corner_by_id[row['co_corner_id']],
                                                      decentral_locations=ds)
+
+    # co_look_up: Dict[int, CentralLocation] = dict()
+    # for index, row in co_locations_ids.iterrows():
+    #     ds = list()
+    #     for ds_id in row:
+    #         ds.append(ds_look_up[ds_id])
+    #     co_look_up[row['co_id']] = CentralLocation(trench_corner=trench_network.corner_by_id[row['node_for_adding']],
+    #                                                decentral_locations=ds)
 
     # co_look_up = trench_corner_gdf.loc[trench_corner_gdf.groupby('x')['y'].idxmax()].head(1)
 
@@ -313,7 +307,7 @@ def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParame
 
     ds_look_up = _get_ds_locations(trench_network, cabinet_look_up, building_trenches_df)
 
-    co_look_up = _get_co_location(trench_network)
+    co_look_up = _get_co_location(trench_corner_gdf, ds_look_up)
 
     # Find shortest paths between the buildings and the cabinets
     fiber_network, building_fiber_graph = _get_drop_cable_network(building_trenches_with_cabinet_df,
