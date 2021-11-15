@@ -39,16 +39,16 @@ def plot_1(ref_g_box, ref_building_gdf, trench_graph):
     ec = ['black' if 'highway' in d else
           'red' for _, _, _, d in ref_g_box.edges(keys=True, data=True)]
     ref_fig, ax = ox.plot_graph(ref_g_box, bgcolor='white', edge_color=ec,
-                                node_size=0, edge_linewidth=0.5,
+                                node_size=0, edge_linewidth=0.8,
                                 show=False, close=False)
     if trench_graph is not None:
         ec = ["grey" if "trench_crossing" in d and d["trench_crossing"] else
               "blue" if "house_trench" in d else
               'red' for _, _, _, d in trench_graph.edges(keys=True, data=True)]
         ref_fig, ax = ox.plot_graph(trench_graph, bgcolor='white', edge_color=ec,
-                                    node_size=0, edge_linewidth=0.5,
+                                    node_size=0, edge_linewidth=0.8,
                                     show=False, close=False, ax=ax)
-    ox.plot_footprints(ref_building_gdf, ax=ax, color="orange", alpha=0.5)
+    ox.plot_footprints(building_gdf, ax=ax, color="burlywood", alpha=0.6, show=False, close=False)
     return ref_fig
 
 
@@ -58,7 +58,7 @@ st.sidebar.subheader('Input Coordinates')
 # east_field, west_field = st.sidebar.columns(2)
 
 #box_field = st.sidebar.columns(1)
-box_text = st.sidebar.text_input('box', '51.1771,4.4057,51.1754,4.4121')
+box_text = st.sidebar.text_input('North, East, South, West', '51.1771, 4.4057, 51.1754, 4.4121')
 
 # Write a page title
 col1, col2 = st.columns((2, 1))
