@@ -54,8 +54,11 @@ def plot_1(ref_g_box, ref_building_gdf, trench_graph):
 
 # Sidebar with coordinate/placename inputs
 st.sidebar.subheader('Input Coordinates')
-north_field, south_field = st.sidebar.columns(2)
-east_field, west_field = st.sidebar.columns(2)
+# north_field, south_field = st.sidebar.columns(2)
+# east_field, west_field = st.sidebar.columns(2)
+
+#box_field = st.sidebar.columns(1)
+box_text = st.sidebar.text_input('box', '51.1771,4.4057,51.1754,4.4121')
 
 # Write a page title
 col1, col2 = st.columns((2, 1))
@@ -69,10 +72,12 @@ st.subheader('Cognizant’s fiber network optimizer \n')
 
 
 # Sidebar inputs
-north = north_field.text_input('North', '50.78694')
-south = south_field.text_input('South', '50.77902')
-east = east_field.text_input('East', '4.48386')
-west = west_field.text_input('West', '4.49521')
+# north = north_field.text_input('North', '50.78694')
+# south = south_field.text_input('South', '50.77902')
+# east = east_field.text_input('East', '4.48386')
+# west = west_field.text_input('West', '4.49521')
+
+north, east, south, west = str(box_text).split(",")
 
 # Map
 st.sidebar.subheader('Map')

@@ -223,7 +223,7 @@ def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParame
     ds_look_up = _get_ds_locations(trench_network, cabinet_look_up, building_trenches_df)
 
     # Find shortest paths between the buildings and the cabinets
-    fiber_network, building_fiber_graph = _get_drop_cable_network(building_trenches_with_cabinet_df,
+    fiber_network, building_fiber_graph, trenches_gdf = _get_drop_cable_network(building_trenches_with_cabinet_df,
                                                          g_box,
                                                          trench_corner_gdf,
                                                          trenches_df,
@@ -415,7 +415,7 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
     :return: A Fiber Network object and a Building Fiber graph as a NetworkX graph
     """
     fiber_network = FiberNetwork()
-    building_drop_cables = _find_shortest_path_to_buildings(cabinet_look_up, g_box,
+    building_drop_cables, trenches_gdf = _find_shortest_path_to_buildings(cabinet_look_up, g_box,
                                                             building_trenches_df,
                                                             trench_corner_gdf, trenches_gdf, cost_parameters)
     trench_look_up = trenches_df
@@ -470,7 +470,7 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
 
     fiber_network.trenches = trench_look_up.reindex(index=all_trench_ids)
 
-    return fiber_network, building_fiber_graph
+    return fiber_network, building_fiber_graph, trenches_gdf
 
 
 def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], g_box: networkx.MultiGraph,
@@ -516,7 +516,7 @@ def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], 
         trenches_gdf["dig_weight"] = trenches_gdf["dig_weight"].mask(trenches_gdf["u"].isin(s_path), 0)\
                                                                .mask(trenches_gdf["v"].isin(s_path), 0)
 
-    return building_drop_cables
+    return building_drop_cables, trenches_gdf
 
 
 def _find_shortest_path_to_cabinets(ds_look_up, g_box: networkx.MultiGraph, trench_corner_gdf: gpd.GeoDataFrame,
