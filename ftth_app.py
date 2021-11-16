@@ -14,7 +14,7 @@ import osmnx as ox
 from cost_parameters import CostParameters
 from costs import get_costs, DetailedCost
 from fibers import get_fiber_network
-from trenches2 import get_trench_network, get_trench_to_network_graph, TrenchNetwork
+from trenches import get_trench_network, get_trench_to_network_graph, TrenchNetwork
 
 
 def get_planning(north: str, south: str, east: str, west: str) -> Union[networkx.MultiGraph, geopandas.GeoDataFrame]:

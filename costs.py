@@ -7,7 +7,7 @@ from cost_parameters import CostParameters
 from fibers import FiberNetwork, CableType, EquipmentType, FiberCable, DecentralLocation, Splitter, StreetCabinet, ONT
 
 # import ruamel.yaml
-from trenches2 import TrenchType, TrenchCorner, Trench
+from trenches import TrenchType, TrenchCorner, Trench
 
 
 class DetailedCostLine:

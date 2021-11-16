@@ -7,7 +7,7 @@ from cost_parameters import CostParameters
 from costs import DetailedCost, get_costs
 from fibers import get_fiber_network
 from report import get_detailed_report
-from trenches2 import get_trench_network, get_trench_to_network_graph
+from trenches import get_trench_network, get_trench_to_network_graph
 
 
 def plot_network(g_box: networkx.MultiDiGraph, trench_network_graph: networkx.MultiDiGraph, building_gdf):

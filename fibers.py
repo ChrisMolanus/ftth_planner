@@ -17,7 +17,7 @@ from scipy.spatial import cKDTree
 from shapely.geometry import LineString
 
 from cost_parameters import CostParameters
-from trenches2 import TrenchNetwork, TrenchCorner, get_trench_network
+from trenches import TrenchNetwork, TrenchCorner, get_trench_network
 
 
 class CableType(Enum):
