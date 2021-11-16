@@ -94,7 +94,7 @@ def plot_graph(ref_g_box: networkx.MultiGraph,
 # Sidebar with coordinate/placename inputs
 st.sidebar.subheader('Input Coordinates')
 
-box_text = st.sidebar.text_input('North, East, South, West', '51.1771, 4.4057, 51.1754, 4.4121')
+box_text = st.sidebar.text_input('North, East, South, West', '50.843217, 4.439903, 50.833949, 4.461962')
 north, east, south, west = str(box_text).split(",")
 
 # Map
@@ -108,20 +108,18 @@ except requests.exceptions.ConnectionError:
 
 # Write a page title
 col1, col2 = st.columns((2, 1))
-col1.title('Fiber To The Home Network')
+col1.title('Fiber To The Home Network planner')
 
 # Insert a picture next to title
 image = Image.open('images/Cognizant_Logo_Blue.png')
 col2.image(image, use_column_width=True)
 
-st.subheader('Cognizant’s fiber network optimizer \n')
-
 # Map with optimal fiber route
 st.subheader(f'Optimal fiber network route for [N:{north}, S:{south}, E:{east}, W:{west}] \n')
 
-# Progressively build up map by swapping out the plots as they are created
+# Progressively build up map by swapping in and out the plots as they are created
 # First plot the road network
-g_box, building_gdf = get_planning()
+g_box, building_gdf = get_planning(north, south, east, west)
 plot_holder = st.empty()
 plot_holder.pyplot(plot_graph(g_box, building_gdf, None))
 
@@ -169,4 +167,4 @@ if len(building_gdf)-number_of_missing_addresses > 96:
     _, labor_total_col = st.columns([3, 1])
     labor_total_col.subheader("€{:,.2f}".format(labor_total))
 else:
-    st.write("Too many missing address data")
+    st.write("Too many missing address data, or not enough buildings in area")
