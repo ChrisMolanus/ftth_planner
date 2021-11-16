@@ -78,23 +78,23 @@ def plot_graph(ref_g_box: networkx.MultiGraph,
     ec = ['black' if 'highway' in d else
           'red' for _, _, _, d in ref_g_box.edges(keys=True, data=True)]
     ref_fig, ax = ox.plot_graph(ref_g_box, bgcolor='white', edge_color=ec,
-                                node_size=0, edge_linewidth=0.5,
+                                node_size=0, edge_linewidth=0.6,
                                 show=False, close=False)
     if trench_graph is not None:
         ec = ["grey" if "trench_crossing" in d and d["trench_crossing"] else
               "blue" if "house_trench" in d else
               'red' for _, _, _, d in trench_graph.edges(keys=True, data=True)]
         ref_fig, ax = ox.plot_graph(trench_graph, bgcolor='white', edge_color=ec,
-                                    node_size=0, edge_linewidth=0.5,
+                                    node_size=0, edge_linewidth=0.6,
                                     show=False, close=False, ax=ax)
-    ox.plot_footprints(ref_building_gdf, ax=ax, color="orange", alpha=0.5)
+    ox.plot_footprints(building_gdf, ax=ax, color="burlywood", alpha=0.6, show=False, close=False)
     return ref_fig
 
 
 # Sidebar with coordinate/placename inputs
 st.sidebar.subheader('Input Coordinates')
 
-box_text = st.sidebar.text_input('box', '51.1771,4.4057,51.1754,4.4121')
+box_text = st.sidebar.text_input('North, East, South, West', '51.1771, 4.4057, 51.1754, 4.4121')
 north, east, south, west = str(box_text).split(",")
 
 # Map
