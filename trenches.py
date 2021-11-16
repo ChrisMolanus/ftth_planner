@@ -870,7 +870,7 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
                 new_v_node = TrenchCorner(x=closest_trench_info1.new_v_node["x"],
                                           y=closest_trench_info1.new_v_node["y"],
                                           trench_count=3,
-                                          u_node_id=closest_trench_info1.corner_u,
+                                          u_node_id=closest_trench_info1.corner_u['node_for_adding'],
                                           street_ids=set(),
                                           node_for_adding=new_v_node_id,
                                           )
@@ -884,7 +884,7 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
                 building_node = TrenchCorner(x=closest_trench_info1.building_centroid_node["x"],
                                              y=closest_trench_info1.building_centroid_node["y"],
                                              trench_count=1,
-                                             u_node_id=closest_trench_info1.corner_u,
+                                             u_node_id=closest_trench_info1.corner_u['node_for_adding'],
                                              street_ids=set(),
                                              node_for_adding=building_node_id,
                                              building_index=closest_trench_info1.building_centroid_node[
