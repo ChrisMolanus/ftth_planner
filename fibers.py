@@ -596,7 +596,7 @@ def _get_ds_cable_network(ref_fiber_network: FiberNetwork, ref_g_box: networkx.M
 
     trenches_df["min_node_id"] = trenches_df[['u', 'v']].min(axis=1)
     trenches_df["max_node_id"] = trenches_df[['u', 'v']].max(axis=1)
-    mi = pd.MultiIndex.from_frame(trenches_df[["min_node_id", "max_node_id"]])
+    mi = pd.MultiIndex.from_frame(trenches_df[["min_node_id", "max_node_id", "key"]])
     trench_look_up = trenches_df
     trench_look_up.index = mi
 
