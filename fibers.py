@@ -500,6 +500,7 @@ def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], 
     # make sure to convert to undirected graph
     graph = graph.to_undirected()
     building_drop_cables = list()
+    pairs: List[Tuple[int, int, int]] = list()
     for index, street_trench in building_trenches_df.iterrows():
         building_index = street_trench["building_index"]
         house_node_id = street_trench['building_corner_id']
@@ -513,17 +514,17 @@ def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], 
                 {"building_corner_id": house_node_id, "cabinet_id": cabinet_id, "cabinet_corner_id": cabinet_corner_id,
                  "shortest_path": s_path, "building_index": building_index})
 
-            # print(f"No drop cable path could be found for building_index {building_index}")
             # update graph edge "weight" for every edge in s_path by removing the one time cost for digging
             for pair in list(zip(s_path[::1], s_path[1::1])):
                 edge = graph.edges[pair[0], pair[1], 1]
                 edge["weight"] = (edge["length"] * (
                         cost_parameters.fiber_install_per_km + cost_parameters.fiber_drop_pair_per_km))
+                pairs.append((min(pair), max(pair), 1))
         except networkx.exception.NetworkXNoPath:
             pass
-        # update trenches_gdf["dig_weight"] to 0 for all the trench that were in the s_path(s)
-        trenches_gdf["dig_weight"] = trenches_gdf["dig_weight"].mask(trenches_gdf["u"].isin(s_path), 0) \
-            .mask(trenches_gdf["v"].isin(s_path), 0)
+            # print(f"No drop cable path could be found for building_index {building_index}")
+    # Update the dig_weight for the trenches that are used by cables
+    trenches_gdf.loc[pd.IndexSlice[set(pairs)]]["dig_weight"] = 0.0
 
     return building_drop_cables, trenches_gdf
 
