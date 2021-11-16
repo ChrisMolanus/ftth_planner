@@ -12,7 +12,7 @@ import osmnx as ox
 import pyproj
 from shapely.geometry import LineString
 
-distance_from_center_of_road = 0.0001
+distance_from_center_of_road = 0.00005
 geod = pyproj.Geod(ellps='WGS84')
 # zone 31 for benelux
 P = pyproj.Proj(proj='utm', zone=31, ellps='WGS84', preserve_units=True)
