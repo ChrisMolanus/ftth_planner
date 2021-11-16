@@ -1,7 +1,7 @@
+# Fiber to the Home Planner
+This Proof of Concept application that attempts finding a "optimal" fiber network planning for a map area.
 
-This application attempts to create a ranked list of Fiber-to-the-Home Roll-Out areas based on ROI.
-
-The application has two sub-models, the first of which uses OpenStreetMaps data and parameter provided by the operator to optimize the Fiber-to-the-Home underground cables routes for cost savings.
+The application uses OpenStreetMaps data and parameter provided by the operator to optimize the Fiber-to-the-Home underground cables routes for cost savings.
 ![Map](images/ftth_map_indexed.png)
 The model is designed consider factors such as:
 - Which side of the road would cost less to dig-up
@@ -16,19 +16,10 @@ The model is designed consider factors such as:
 
 The model should output a detailed planning along with itemized material and labour estimates.
 
-
-The second model would be based on the operators existing churn, acquisition and up-sell models that would predict the up take in revenue if a town/burrow would be supplied with fiber internet based on previous areas that have rolled out, or on estimates.
-
-Using these two models the operator could rank all future fiber roll out areas based on ROI and roll out the areas with eh highest ROI first.
-And the network planners could use the route planner maps as a starting point for the actual route plan since it can be displayed as  a custom layer in OpenStreetMaps.
-
-
-![Process](images/ftth_process.svg)
-
 ![Relationships Diagram](images/ftth_entity_relationships.svg)
 Relationship Diagram
 
-# Install
+## Install
 ```bash
 conda config --prepend channels conda-forge
 conda create -n ftth_planner --strict-channel-priority osmnx
