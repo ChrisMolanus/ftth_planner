@@ -1,17 +1,14 @@
+import itertools
+import math
 from enum import Enum
 from typing import Dict, List, Tuple, Set, Any, Hashable
 
 import geopandas
+import geopandas as gpd
+import matplotlib.pyplot as plt
 import networkx
 import numpy as np
 import osmnx as ox
-import itertools
-
-import matplotlib.pyplot as plt
-import math
-
-import pandas as pd
-import geopandas as gpd
 import pyproj
 from shapely.geometry import LineString
 
@@ -20,6 +17,7 @@ geod = pyproj.Geod(ellps='WGS84')
 # zone 31 for benelux
 P = pyproj.Proj(proj='utm', zone=31, ellps='WGS84', preserve_units=True)
 
+
 def point_distance_from_line(line: Tuple[dict, dict], point: dict) -> float:
     """
     The distance between a point and a line
@@ -27,7 +25,7 @@ def point_distance_from_line(line: Tuple[dict, dict], point: dict) -> float:
     :param point: The point
     :return: The distance between the point and the line
     """
-    return (((point['x'] - line[0]['x'])*(line[1]['y']-line[0]['y']))
+    return (((point['x'] - line[0]['x']) * (line[1]['y'] - line[0]['y']))
             - ((point['y'] - line[0]['y']) * (line[1]['x'] - line[0]['x'])))
 
 
@@ -51,13 +49,13 @@ def angle(vector1: Tuple[float, float], vector2: Tuple[float, float]) -> float:
     """
     x1, y1 = vector1
     x2, y2 = vector2
-    inner_product = x1*x2 + y1*y2
+    inner_product = x1 * x2 + y1 * y2
     len1 = math.hypot(x1, y1)
     len2 = math.hypot(x2, y2)
     if y2 < y1:
-        return math.pi - math.acos(inner_product/(len1*len2)) + math.pi
+        return math.pi - math.acos(inner_product / (len1 * len2)) + math.pi
     else:
-        return math.acos(inner_product/(len1*len2))
+        return math.acos(inner_product / (len1 * len2))
 
 
 def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, float]:
@@ -72,11 +70,14 @@ def point_on_circle(center: dict, radius: float, radian: float) -> Tuple[float, 
     y = center['y'] + (radius * math.sin(radian))
     return x, y
 
-def _LatLon_To_XY(Lat,Lon):
-  return P(Lat,Lon)
 
-def _XY_To_LatLon(x,y):
-  return P(x,y,inverse=True)
+def _LatLon_To_XY(Lat, Lon):
+    return P(Lat, Lon)
+
+
+def _XY_To_LatLon(x, y):
+    return P(x, y, inverse=True)
+
 
 def get_perpendicular_line(u_node: dict, v_node: dict, ref_point: dict) -> Tuple[dict, dict]:
     """
@@ -139,7 +140,6 @@ class TrenchCorner(dict):
         self['street_ids'] = street_ids
         self['node_for_adding'] = node_for_adding
 
-
     def __cmp__(self, other):
         return self['x'] == other['x'] and self['y'] == other['y']
 
@@ -157,8 +157,9 @@ class TrenchType(Enum):
 
 
 class Trench(dict):
-    def __init__(self, u_for_edge: int, v_for_edge: int, name: str, length: float, street_names: Set[str], trench: bool = True,
-                 trench_crossing: bool = False, geometry: LineString = None, house_trench: bool = False,  *args, **kw):
+    def __init__(self, u_for_edge: int, v_for_edge: int, name: str, length: float, street_names: Set[str],
+                 trench: bool = True,
+                 trench_crossing: bool = False, geometry: LineString = None, house_trench: bool = False, *args, **kw):
         super(Trench, self).__init__(*args, **kw)
         self['u_for_edge'] = u_for_edge
         self['v_for_edge'] = v_for_edge
@@ -400,7 +401,7 @@ def get_trench_corners(road_network: networkx.MultiDiGraph,
             street = network.get_edge_data(u, v)[0]
             if 'geometry' not in street:
                 # Its' a simple straight line so that the other intersection as point ot form the vector
-                radian = angle((1.0, 0.0), (neighbor['x']-current_node['x'], neighbor['y']-current_node['y']))
+                radian = angle((1.0, 0.0), (neighbor['x'] - current_node['x'], neighbor['y'] - current_node['y']))
             else:
                 # Street is not a simple line so we have to look at the geometry
                 l: List[Tuple[float, float]] = list(street['geometry'].coords)
@@ -506,7 +507,7 @@ def get_trench_corners(road_network: networkx.MultiDiGraph,
                 output_road_crossing[last_street_id].append(Trench(u_for_edge=last_node_id,
                                                                    v_for_edge=node_id,
                                                                    name=last_street_id,
-                                                                   length=2*ref_distance_from_center_of_road,
+                                                                   length=2 * ref_distance_from_center_of_road,
                                                                    street_names=last_street_names,
                                                                    trench_crossing=True
                                                                    )
@@ -517,11 +518,11 @@ def get_trench_corners(road_network: networkx.MultiDiGraph,
                 output_road_crossing[first_street_id].append(Trench(u_for_edge=node_id,
                                                                     v_for_edge=first_node_id,
                                                                     name=first_street_id,
-                                                                    length=2*ref_distance_from_center_of_road,
+                                                                    length=2 * ref_distance_from_center_of_road,
                                                                     street_names=first_street_names,
                                                                     trench_crossing=True
                                                                     )
-                                                            )
+                                                             )
         elif len(sorted_vs) == 1:
             # This is a Dead end road, there was only 1 neighbor
             # So we make a "T" shape with a road crossing trench at the top
@@ -587,11 +588,11 @@ def is_between(a: Tuple[float, float], b: Tuple[float, float], c: Tuple[float, f
     if abs(crossproduct) > 0.00000005:
         return False
 
-    dotproduct = (c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1])*(b[1] - a[1])
+    dotproduct = (c[0] - a[0]) * (b[0] - a[0]) + (c[1] - a[1]) * (b[1] - a[1])
     if dotproduct < 0:
         return False
 
-    squaredlengthba = (b[0] - a[0])*(b[0] - a[0]) + (b[1] - a[1])*(b[1] - a[1])
+    squaredlengthba = (b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1])
     if dotproduct > squaredlengthba:
         return False
 
@@ -778,7 +779,7 @@ def get_building_trench_distance(building_centroid_node, corner_by_id, current_s
             # Check if this trench is the closest one so far
             if new_distance < current_shortest_distance:
                 new_v_node = projected
-                #current_shortest_distance = new_distance
+                # current_shortest_distance = new_distance
                 closest_trench = trench_index
                 closest_trench_info = {'building_centroid_node': building_centroid_node,
                                        'ref_new_v_node': new_v_node,
@@ -1129,9 +1130,9 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
     building_by_closest_trench = get_building_by_closest_trench(building_gdf, trench_corners, trenches)
 
     # Get new road trenches that are connected to the building trenches
-    new_trench_corners, new_trenches,  trench_indexes_to_remove, building_trenches_lookup = \
+    new_trench_corners, new_trenches, trench_indexes_to_remove, building_trenches_lookup = \
         get_sub_trenches_for_buildings(
-        building_by_closest_trench, trenches, trench_corners)
+            building_by_closest_trench, trenches, trench_corners)
 
     # new_trench_corners has different keys than what is currently in trench_corners
     # So we can safely add them to the trench corner dict
@@ -1164,7 +1165,8 @@ def get_trench_to_network_graph(trench_network: TrenchNetwork,
     :return: A combined MultiDiGraph
     """
     # Add trench corner nodes to network
-    building_fiber_graph = ox.graph_from_gdfs(gpd.GeoDataFrame(columns=["x", "y"]), gpd.GeoDataFrame(), graph_attrs=road_network.graph)
+    building_fiber_graph = ox.graph_from_gdfs(gpd.GeoDataFrame(columns=["x", "y"]), gpd.GeoDataFrame(),
+                                              graph_attrs=road_network.graph)
 
     for intersection_osmid, corners in trench_network.trenchCorners.items():
         for corner in corners:
@@ -1198,7 +1200,7 @@ if __name__ == "__main__":
                             node_size=0, edge_linewidth=0.5,
                             show=False, close=False)
 
-    ec = ["grey" if "trench_crossing" in d and d["trench_crossing"]else
+    ec = ["grey" if "trench_crossing" in d and d["trench_crossing"] else
           "blue" if "house_trench" in d else
           'red' for _, _, _, d in trench_graph.edges(keys=True, data=True)]
     fig, ax = ox.plot_graph(trench_graph, bgcolor='white', edge_color=ec,
