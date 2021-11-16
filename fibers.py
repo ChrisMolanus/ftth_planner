@@ -327,6 +327,7 @@ def _get_trench_dataframe(trench_network: TrenchNetwork, cost_parameters: CostPa
     trenches_gdf["max_node_id"] = trenches_gdf[['u', 'v']].max(axis=1)
     mi = pd.MultiIndex.from_frame(trenches_gdf[["min_node_id", "max_node_id", "key"]])
     trenches_gdf.index = mi
+    trenches_gdf.sort_index(inplace=True)
 
     return trenches_df, trenches_gdf
 
@@ -428,6 +429,7 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
         trenches_df["key"] = 1
         mi = pd.MultiIndex.from_frame(trenches_df[["min_node_id", "max_node_id", "key"]])
         trench_look_up.index = mi
+        trench_look_up.sort_index(inplace=True)
 
     cables: List[FiberCable] = list()
     fiber_network.fibers[CableType.SplitterToHouseDropCable] = cables
@@ -599,6 +601,7 @@ def _get_ds_cable_network(ref_fiber_network: FiberNetwork, ref_g_box: networkx.M
     mi = pd.MultiIndex.from_frame(trenches_df[["min_node_id", "max_node_id", "key"]])
     trench_look_up = trenches_df
     trench_look_up.index = mi
+    trench_look_up.sort_index(inplace=True)
 
     cables: List[FiberCable] = list()
     ref_fiber_network.fibers[CableType.DSToSplitter96Cores] = cables
