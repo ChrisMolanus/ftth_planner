@@ -93,8 +93,10 @@ def plot_graph(ref_g_box: networkx.MultiGraph,
 
 # Sidebar with coordinate/placename inputs
 st.sidebar.subheader('Input Coordinates')
+# original '50.78694, 4.48386, 50.77902, 4.49521'
+# big '50.843217, 4.439903, 50.833949, 4.461962'
+box_text = st.sidebar.text_input('North, East, South, West', '50.78694, 4.48386, 50.77902, 4.49521')
 
-box_text = st.sidebar.text_input('North, East, South, West', '50.843217, 4.439903, 50.833949, 4.461962')
 north, east, south, west = str(box_text).split(",")
 
 # Map
@@ -129,11 +131,13 @@ plot_holder.pyplot(plot_graph(g_box, building_gdf, trench_network_graph))
 
 # Then if we have enough building data plot the fiber network with the detailed costs
 number_of_missing_addresses = building_gdf['addr:street'].isna().sum()
-if len(building_gdf)-number_of_missing_addresses > 96:
+number_of_addresses = len(building_gdf)-number_of_missing_addresses
+if 96 < number_of_addresses < 2000:
     detailed_cost, fig = get_fiber_planning(trench_network, building_gdf, g_box )
     fig.legend(loc='lower center', fontsize='x-small')
     plot_holder.pyplot(fig)
 
+    format_mapping = {"Quantity": "{:,.0f}", "Quantity units": "", "Total Cost": "€{:,.2f}"}
 
     # Material cost dataframes
     materials_df = detailed_cost.get_materials_dataframe()
@@ -145,7 +149,7 @@ if len(building_gdf)-number_of_missing_addresses > 96:
     st.header('Material cost breakdown \n')
     cols_materials = list(materials_df.columns.values)
     ms_mat = st.multiselect("Select dataframe columns", materials_df.columns.tolist(), default=cols_materials, key=1)
-    st.dataframe(materials_df[ms_mat].style.set_precision(2))
+    st.dataframe(materials_df[ms_mat].style.format(format_mapping))
 
     # Display sum of material cost
     _, materials_total_col = st.columns([3, 1])
@@ -161,10 +165,13 @@ if len(building_gdf)-number_of_missing_addresses > 96:
     st.header('Labour cost breakdown \n')
     cols_labor = list(labor_df.columns.values)
     ms_lab = st.multiselect("Select dataframe columns", labor_df.columns.tolist(), default=cols_labor, key=2)
-    st.dataframe(labor_df[ms_lab].style.set_precision(2))
+    st.dataframe(labor_df[ms_lab].style.format(format_mapping))
 
     # Display sum of labor cost
     _, labor_total_col = st.columns([3, 1])
     labor_total_col.subheader("€{:,.2f}".format(labor_total))
 else:
-    st.write("Too many missing address data, or not enough buildings in area")
+    if number_of_addresses < 96:
+        st.write("Too many missing address data, or not enough buildings in area")
+    else:
+        st.write("The area is to large, and it would take to long to plan")
