@@ -13,8 +13,9 @@ import pyproj
 from shapely.geometry import LineString
 
 distance_from_center_of_road = 0.00005
+# World Geodetic System 1984 (WGS 84), see https://en.wikipedia.org/wiki/World_Geodetic_System
 geod = pyproj.Geod(ellps='WGS84')
-# zone 31 for benelux
+# zone 31 for benelux, see https://en.wikipedia.org/wiki/Universal_Transverse_Mercator_coordinate_system#UTM_zone
 P = pyproj.Proj(proj='utm', zone=31, ellps='WGS84', preserve_units=True)
 
 
