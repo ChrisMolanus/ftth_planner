@@ -535,7 +535,7 @@ def _find_shortest_path_to_cabinets(ds_look_up, g_box: networkx.MultiGraph, tren
                                                            (cost_parameters.fiber_install_per_km +
                                                             cost_parameters.fiber_96core_per_km))
     graph = ox.graph_from_gdfs(trench_corner_gdf, trenches_gdf.drop("key", axis=1), graph_attrs=g_box.graph)
-    # make sure to convert to undirected graph
+    # make sure to convert to undirected graph since cables don't have to follow traffic signs
     graph = graph.to_undirected()
     ds_fiber_cables = list()
     pairs: List[Tuple[int, int, int]] = list()
