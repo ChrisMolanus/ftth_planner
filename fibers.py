@@ -562,15 +562,16 @@ def _find_shortest_path_to_cabinets(ds_look_up, g_box: networkx.MultiGraph, tren
                 ds_fiber_cables.append(
                     {"cabinet_corner_id": cabinet_corner_id, "ds_id": ds, "ds_corner_id": ds_corner_id,
                      "shortest_path": s_path, "decentral_locations": ds, 'street_cabinet_id': street_cabinet_id})
+
+                for pair in list(zip(s_path[::1], s_path[1::1])):
+                    edge = graph.edges[pair[0], pair[1], 1]
+                    edge["weight"] = (edge["length"] * (
+                            cost_parameters.fiber_install_per_km + cost_parameters.fiber_96core_per_km))
+                    pairs.append((min(pair), max(pair), 1))
             except networkx.exception.NetworkXNoPath:
                 pass
                 # print(f"No drop cable path could be found for building_index {building_index}")
-            for pair in list(zip(s_path[::1], s_path[1::1])):
-                edge = graph.edges[pair[0], pair[1], 1]
-                edge["weight"] = (edge["length"] * (
-                        cost_parameters.fiber_install_per_km + cost_parameters.fiber_96core_per_km))
-                pairs.append((min(pair), max(pair), 1))
-
+    # Update the dig_weight for the trenches that are used by cables
     trenches_gdf.loc[pd.IndexSlice[set(pairs)]]["dig_weight"] = 0.0
 
     return ds_fiber_cables
