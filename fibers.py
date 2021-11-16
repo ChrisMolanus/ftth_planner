@@ -2,7 +2,7 @@ import math
 import os
 import pickle
 from enum import Enum
-from typing import List, Dict, Tuple, Set, Union, Any
+from typing import List, Dict, Tuple, Set, Any
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
@@ -18,9 +18,6 @@ from shapely.geometry import LineString
 
 from cost_parameters import CostParameters
 from trenches2 import TrenchNetwork, TrenchCorner, get_trench_network
-
-
-# os.environ["PROJ_LIB"] = r"C:\Users\823278\Anaconda3\envs\ftth_planner\Library\share"
 
 
 class CableType(Enum):
@@ -109,10 +106,10 @@ class FiberNetwork:
         """
         A Fiberoptic Network
         """
-        self.fibernetwork: networkx.MultiDiGraph = None
+        self.fibernetwork: networkx.MultiDiGraph = networkx.MultiDiGraph()
         self.fibers: Dict[CableType, List[FiberCable]] = dict()
         self.equipment: Dict[EquipmentType, List[Equipment]] = dict()
-        self.trenches: pd.DataFrame = None
+        self.trenches: pd.DataFrame = pd.DataFrame()
 
 
 class DecentralLocation(Equipment):
