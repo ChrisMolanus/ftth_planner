@@ -39,8 +39,6 @@ g_box = ox.graph_from_bbox(*box,
                            truncate_by_edge=True)
 building_gdf = ox.geometries_from_bbox(*box, tags={'building': True})
 trench_network = get_trench_network(g_box, building_gdf)
-# import pickle
-# pickle.dump(trench_network, open("trench_network.p", "wb"))
 
 trench_network_graph = get_trench_to_network_graph(trench_network, g_box)
 plot_network(g_box, trench_network_graph, building_gdf)
@@ -51,12 +49,6 @@ fiber_network, fig = get_fiber_network(trench_network, cost_parameters, building
 detailed_cost = get_costs(fiber_network, cost_parameters)
 print(detailed_cost.get_materials_dataframe())
 print(detailed_cost.get_labor_dataframe())
-
-#detailed_report = get_detailed_report(detailed_cost, building_gdf)
-
-# if detailed_report.plot is not None:
-#     detailed_report.plot.show()
-
 
 print("--- The job took %s seconds ---" % (time.time() - start_time))
 
