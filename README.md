@@ -33,3 +33,19 @@ Relationship Diagram
 conda config --prepend channels conda-forge
 conda create -n ftth_planner --strict-channel-priority osmnx
 ```
+
+## Running web app
+```bash
+streamlit run ftth_app.py
+```
+
+## Know bugs
+If you have a idea on how to fix any bug, please send me a pull request.
+
+- OpenStreetmap data often doesn't contain building address data, so 
+  it il not work in areas that have less than 96 addresses registered
+  
+- If building don't have address information we would of course look for the closest trench, 
+  but this would be computationally expensive to do for all buildings and all trenches
+  
+- Buildings with address information sometimes do not find the closest trench, not sure why
