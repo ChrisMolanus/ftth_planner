@@ -724,21 +724,27 @@ if __name__ == "__main__":
                                    simplify=False,
                                    retain_all=False,
                                    truncate_by_edge=True)
-        pickle.dump(g_box, open("g_box.p", "wb"))
+        with open("g_box.p", "wb") as f:
+            pickle.dump(g_box, f)
     else:
-        g_box: networkx.MultiDiGraph = pickle.load(open("g_box.p", "rb"))
+        with open("g_box.p", "rb") as f:
+            g_box: networkx.MultiDiGraph = pickle.load(f)
 
     if not os.path.isfile("building_gdf.p"):
         building_gdf = ox.geometries_from_bbox(*box, tags={'building': True})
-        pickle.dump(building_gdf, open("building_gdf.p", "wb"))
+        with open("building_gdf.p", "wb") as f:
+            pickle.dump(building_gdf, f)
     else:
-        building_gdf: gpd.GeoDataFrame = pickle.load(open("building_gdf.p", "rb"))
+        with open("building_gdf.p", "rb") as f:
+            building_gdf: gpd.GeoDataFrame = pickle.load(f)
 
     if not os.path.isfile("trench_network.p"):
         trench_network = get_trench_network(g_box, building_gdf)
-        pickle.dump(trench_network, open("trench_network.p", "wb"))
+        with open("trench_network.p", "wb") as f:
+            pickle.dump(trench_network, f)
     else:
-        trench_network: TrenchNetwork = pickle.load(open("trench_network.p", "rb"))
+        with open("trench_network.p", "rb") as f:
+            trench_network: TrenchNetwork = pickle.load(f)
 
     cost_parameters = CostParameters()
     fiber_network, fig = get_fiber_network(trench_network, cost_parameters, building_gdf, g_box)
