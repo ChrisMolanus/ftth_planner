@@ -686,7 +686,7 @@ class TrenchInfo:
 
 
 def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
-                                   trench_corners: Dict[int, TrenchCorner],
+                                   trench_corners: Dict[str, Set[TrenchCorner]],
                                    trenches: List[Trench]) -> Dict[int, List[TrenchInfo]]:
     """
     Return the a dictionary where the keys are the index of a road trench in the trenches List
@@ -721,7 +721,8 @@ def get_building_by_closest_trench(building_gdf: geopandas.GeoDataFrame,
         street_name = building['addr:street']
         centroid = building['geometry'].centroid
         distance = float('inf')
-        building_centroid_node = {'x': centroid.xy[0][0], 'y': centroid.xy[1][0], 'building_index': building_index}
+        building_centroid_node = {'x': float(centroid.xy[0][0]), 'y': float(centroid.xy[1][0]),
+                                  'building_index': building_index}
         # There might be buildings in the box that are on roads that are not in the box, geo fencing problem
         # or just buildings with no address
         if street_name in street_trenches and len(street_trenches[street_name]) > 0:
@@ -821,8 +822,9 @@ def get_building_trench_distance(building_centroid_node, corner_by_id, current_s
 
 def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[TrenchInfo]],
                                    trenches: List[Trench],
-                                   trench_corners: Dict[str, Set[TrenchCorner]]
-                                   ) -> Tuple[Dict[str, Set[TrenchCorner]], List[Trench], List[int]]:
+                                   trench_corners: Dict[Hashable, Set[TrenchCorner]]
+                                   ) -> Tuple[Dict[Hashable, Set[TrenchCorner]], List[Trench], List[int],
+                                              Dict[Hashable, Tuple[int, int]]]:
     """
     Returns the:
     - new_trench_corners: The building Nodes and the new road sub-trench Nodes as TrenchCorner
@@ -842,11 +844,11 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
             corner_by_id[corner['node_for_adding']] = corner
 
     new_trenches: List[Trench] = list()
-    new_trench_corners: Dict[str, Set[TrenchCorner]] = dict()
+    new_trench_corners: Dict[Hashable, Set[TrenchCorner]] = dict()
     node_id = 500000000
     trench_indexes_to_remove = list()
     # object used by fiber network to find road trench nodes for street cabinets
-    building_trenches_lookup: Dict[str, Tuple[int, int]] = dict()
+    building_trenches_lookup: Dict[Hashable, Tuple[int, int]] = dict()
 
     # Loop over all the buildings that we found closest trenches for and create the building trenches
     # and the new sub-trenches that should replace the current road trenches
@@ -892,7 +894,7 @@ def get_sub_trenches_for_buildings(building_by_closest_trench: Dict[int, List[Tr
                                                  'building_index'])
                 # Since we are looping the buildings the building_index is unique,
                 # so we don't have to check if the key already exists
-                new_trench_corners[str(closest_trench_info1.building_centroid_node['building_index'])] = {building_node}
+                new_trench_corners[closest_trench_info1.building_centroid_node['building_index']] = {building_node}
 
                 # Create teh building trench and the next road sub-trench in the chain
                 if closest_trench_info1.geometry:
@@ -978,7 +980,7 @@ def get_trench_network(road_network: networkx.MultiDiGraph,
 
                 # To try and prevent getting trenches that cross streets
                 # we split the trench corners be the side of the road
-                street_sides = [[], []]
+                street_sides: List[List[TrenchCorner]] = [[], []]
                 for corner in filtered_corners:
                     if point_distance_from_line((u_node, v_node), corner) > 0:
                         street_sides[1].append(corner)
