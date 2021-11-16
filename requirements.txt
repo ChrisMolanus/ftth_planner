@@ -133,3 +133,16 @@ xerces-c=3.2.3=h0e60522_2
 xz=5.2.5=h62dcd97_1
 zlib=1.2.11=h62dcd97_1010
 zstd=1.5.0=h6255e5f_0
+
+networkx~=2.6.3
+osmnx~=1.1.1
+pandas~=1.2.4
+geopandas~=0.10.2
+numpy~=1.21.4
+scikit-learn~=1.0.1
+scipy~=1.7.2
+shapely~=1.8.0
+requests~=2.26.0
+streamlit~=1.1.0
+pillow~=8.3.2
+pyproj~=3.2.1
