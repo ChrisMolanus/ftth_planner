@@ -1,11 +1,9 @@
-import sys
 from typing import Set, Dict, List, Any, Tuple
 
 import pandas as pd
 
 from cost_parameters import CostParameters
 from fibers import FiberNetwork, CableType, EquipmentType, FiberCable, DecentralLocation, Splitter, StreetCabinet, ONT
-
 # import ruamel.yaml
 from trenches import TrenchType, TrenchCorner, Trench
 
