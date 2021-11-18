@@ -25,11 +25,23 @@ def get_cost_for_cable_installation(cable_type: CableType, length: float, cost_p
     elif cable_type == CableType.SpliterToHouseDropCable:
         return length * cost_parameters.fiber_drop_pair_per_km
 
-def get_cost_for_equipment(equipment_type: EquipmentType, quantity: int, cost_parameters: CostParameters):
+
+def get_cost_for_equipment(equipment_type: EquipmentType, quantity: float, cost_parameters: CostParameters):
     if equipment_type == EquipmentType.StreetCabinet:
         return quantity * cost_parameters.street_cabinet
     elif equipment_type == EquipmentType.Splitter:
         return quantity * cost_parameters.splitter
+    elif equipment_type == EquipmentType.DecentralLocation:
+        return quantity * cost_parameters.ds
+    elif equipment_type == EquipmentType.ONT:
+        return quantity * cost_parameters.ont
+
+
+def get_cost_for_equipment_installation(equipment_type: EquipmentType, quantity: float, cost_parameters: CostParameters):
+    if equipment_type == EquipmentType.StreetCabinet:
+        return quantity * cost_parameters.placement_of_street_cabinet
+    elif equipment_type == EquipmentType.Splitter:
+        return quantity * cost_parameters.placement_of_splitter
     elif equipment_type == EquipmentType.DecentralLocation:
         return quantity * cost_parameters.placement_of_ds
     elif equipment_type == EquipmentType.ONT:
@@ -169,15 +181,14 @@ def get_costs(fiber_network: FiberNetwork, cost_parameters: CostParameters) -> D
     for t in EquipmentType:
         if t in costs.equipment_material:
             costs.equipment_material[t].total_cost = get_cost_for_equipment(equipment_type=t,
-                                                                        quantity=costs.equipment_material[
+                                                                            quantity=costs.equipment_material[
                                                                             t].quantity,
-                                                                        cost_parameters=cost_parameters)
+                                                                            cost_parameters=cost_parameters)
         if t in costs.equipment_installation:
-            costs.equipment_installation[t].total_cost = get_cost_for_equipment(equipment_type=t,
-                                                                        quantity=costs.equipment_installation[
-                                                                            t].quantity,
-                                                                        cost_parameters=cost_parameters)
+            costs.equipment_installation[t].total_cost = get_cost_for_equipment_installation(equipment_type=t, quantity=
+            costs.equipment_installation[t].quantity, cost_parameters=cost_parameters)
     return costs
+
 
 if __name__ == "__main__":
     fake_network = FiberNetwork()

@@ -6,6 +6,7 @@ class CostParameters:
     yaml_tag = u'!CostParameters'
 
     def __init__(self):
+        self.placement_of_splitter: float = 75.0
         self.dig_road_side_trench_per_km: float = 16700.0
         self.dig_per_road_crossing: float = 267200.0
         self.dig_building_trench_per_km: float = 16700.0
