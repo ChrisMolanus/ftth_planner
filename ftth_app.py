@@ -92,12 +92,14 @@ def plot_graph(ref_g_box: networkx.MultiGraph,
 
 
 # Sidebar with coordinate/placename inputs
-st.sidebar.subheader('Input Coordinates')
-# original '50.78694, 4.48386, 50.77902, 4.49521'
-# big '50.843217, 4.439903, 50.833949, 4.461962'
-box_text = st.sidebar.text_input('North, East, South, West', '50.78694, 4.48386, 50.77902, 4.49521')
+st.sidebar.subheader('GPS Box:')
+box_text = st.sidebar.text_input('Top Left (Lat,Long) , Bottom Right (Lat,Long)', '50.78694, 4.48386, 50.77902, 4.49521')
 
 north, east, south, west = str(box_text).split(",")
+st.sidebar.write("Examples:")
+st.sidebar.write("50.9355,4.4853,50.9225,4.5005")
+st.sidebar.write("51.1948,4.5519,51.18,4.5728")
+st.sidebar.write("50.843217,4.439903,50.833949,4.461962")
 
 # Map
 try:
@@ -111,13 +113,15 @@ except requests.exceptions.ConnectionError:
 # Write a page title
 col1, col2 = st.columns((2, 1))
 col1.title('Fiber To The Home Network planner')
+col1.title("Proof of concept")
+st.write("This is a Proof of concept, and not intended to be highly accurate.")
 
 # Insert a picture next to title
 image = Image.open('images/Cognizant_Logo_Blue.png')
 col2.image(image, use_column_width=True)
 
 # Map with optimal fiber route
-st.subheader(f'Optimal fiber network route for [N:{north}, S:{south}, E:{east}, W:{west}] \n')
+st.subheader(f'PON planning \n')
 
 # Progressively build up map by swapping in and out the plots as they are created
 # First plot the road network
