@@ -194,7 +194,7 @@ def _get_ds_locations(ref_trench_network: TrenchNetwork, cabinet_look_up: Dict[i
 
 
 def get_fiber_network(trench_network: TrenchNetwork, cost_parameters: CostParameters,
-                      building_gdf: gpd.GeoDataFrame, g_box: networkx.MultiGraph) -> Tuple[FiberNetwork, plt.Figure]:
+                      building_gdf: gpd.GeoDataFrame, g_box: networkx.MultiDiGraph) -> Tuple[FiberNetwork, plt.Figure]:
     """
     Create a Fiber Optic Network
     :param trench_network: The Trench Network
@@ -400,11 +400,11 @@ def _get_street_cabinets(trench_network: TrenchNetwork,
     return cabinet_look_up, building_trenches_df
 
 
-def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.MultiGraph,
+def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.MultiDiGraph,
                             trench_corner_gdf: gpd.GeoDataFrame, trenches_df: pd.DataFrame,
                             trenches_gdf: gpd.GeoDataFrame,
                             cabinet_look_up: Dict[int, StreetCabinet], cost_parameters: CostParameters) -> Tuple[
-    FiberNetwork, networkx.MultiGraph, gpd.GeoDataFrame]:
+    FiberNetwork, networkx.MultiDiGraph, gpd.GeoDataFrame]:
     """
     Create a last mile optical network which is cables form splitters to buildings
     :param building_trenches_df: The GeoPandas Dataframe of buildings with cabinet IDs
@@ -477,7 +477,7 @@ def _get_drop_cable_network(building_trenches_df: pd.DataFrame, g_box: networkx.
     return fiber_network, building_fiber_graph, trenches_gdf
 
 
-def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], g_box: networkx.MultiGraph,
+def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], g_box: networkx.MultiDiGraph,
                                      building_trenches_df: pd.DataFrame, trench_corner_gdf: gpd.GeoDataFrame,
                                      trenches_gdf: gpd.GeoDataFrame, cost_parameters: CostParameters) -> Tuple[List[
     Dict[str, Any]], gpd.GeoDataFrame]:
@@ -528,7 +528,7 @@ def _find_shortest_path_to_buildings(cabinet_look_up: Dict[int, StreetCabinet], 
     return building_drop_cables, trenches_gdf
 
 
-def _find_shortest_path_to_cabinets(ds_look_up, g_box: networkx.MultiGraph, trench_corner_gdf: gpd.GeoDataFrame,
+def _find_shortest_path_to_cabinets(ds_look_up, g_box: networkx.MultiDiGraph, trench_corner_gdf: gpd.GeoDataFrame,
                                     trenches_gdf: gpd.GeoDataFrame, cost_parameters: CostParameters) -> List[
     Dict[str, Any]]:
     """
@@ -576,10 +576,10 @@ def _find_shortest_path_to_cabinets(ds_look_up, g_box: networkx.MultiGraph, tren
     return ds_fiber_cables
 
 
-def _get_ds_cable_network(ref_fiber_network: FiberNetwork, ref_g_box: networkx.MultiGraph,
+def _get_ds_cable_network(ref_fiber_network: FiberNetwork, ref_g_box: networkx.MultiDiGraph,
                           trench_corner_gdf: gpd.GeoDataFrame, trenches_df, trenches_gdf,
                           ds_look_up: Dict[int, DecentralLocation], ref_cost_parameters: CostParameters) -> Tuple[
-    FiberNetwork, networkx.MultiGraph]:
+    FiberNetwork, networkx.MultiDiGraph]:
     """
     Create a last mile optical network which is cables form splitters to buildings
     :param ref_fiber_network: The fiber network obejct
@@ -637,7 +637,7 @@ def _get_ds_cable_network(ref_fiber_network: FiberNetwork, ref_g_box: networkx.M
     return ref_fiber_network, fiber_dc_graph
 
 
-def _find_shortest_path_to_cs(cs_look_up, ref_g_box: networkx.MultiGraph, trench_corner_gdf: gpd.GeoDataFrame,
+def _find_shortest_path_to_cs(cs_look_up, ref_g_box: networkx.MultiDiGraph, trench_corner_gdf: gpd.GeoDataFrame,
                               trenches_gdf: gpd.GeoDataFrame) -> List[Dict[str, Any]]:
     """
     Find the shortest path from each decentrale to its associated central location

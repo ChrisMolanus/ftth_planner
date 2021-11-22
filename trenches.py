@@ -95,7 +95,7 @@ def get_perpendicular_line(u_node: dict, v_node: dict, ref_point: dict) -> Tuple
     dy = y2 - y1
 
     if (dy ** 2 + dx ** 2) != 0:
-        k = (dy * (x3 - x1) - (dx) * (y3 - y1)) / (dy ** 2 + dx ** 2)
+        k = (dy * (x3 - x1) - dx * (y3 - y1)) / (dy ** 2 + dx ** 2)
         x4 = x3 - k * dy
         y4 = y3 + k * dx
     px4, py4 = _XY_To_LatLon(x4, y4)
@@ -318,8 +318,8 @@ def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: Li
             if last_line is not None:
                 # Not first line
                 x, y = get_intersection_point(last_line,
-                                              [(new_u_node['x'], new_u_node['y']),
-                                               (new_v_node['x'], new_v_node['y'])])
+                                              ((new_u_node['x'], new_u_node['y']),
+                                               (new_v_node['x'], new_v_node['y'])))
                 x = round(x, 7)
                 y = round(y, 7)
                 new_u_node = {'x': x, 'y': y, 'street_count': 1}
@@ -338,7 +338,7 @@ def get_trench_linestring(u_side_corners: List[TrenchCorner], v_side_corners: Li
                 y = new_u_node['y']
 
             linestring.append((new_u_node['x'], new_u_node['y']))
-            line = [(new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y'])]
+            line = ((new_u_node['x'], new_u_node['y']), (new_v_node['x'], new_v_node['y']))
             last_line = line
 
             dx = x - new_v_node['x']

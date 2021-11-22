@@ -1,5 +1,5 @@
 # Imports
-from typing import Union
+from typing import Tuple, Optional
 
 import geopandas
 import matplotlib.pyplot as plt
@@ -17,7 +17,7 @@ from fibers import get_fiber_network
 from trenches import get_trench_network, get_trench_to_network_graph, TrenchNetwork
 
 
-def get_planning(north: str, south: str, east: str, west: str) -> Union[networkx.MultiGraph, geopandas.GeoDataFrame]:
+def get_planning(north: str, south: str, east: str, west: str) -> Tuple[networkx.MultiDiGraph, geopandas.GeoDataFrame]:
     """
     Get open Street map data, the g_box graph and a GeoDataFrame with the building data
     :param north: Upper left GPS Latitude of box
@@ -36,8 +36,8 @@ def get_planning(north: str, south: str, east: str, west: str) -> Union[networkx
     return ref_g_box, ref_building_gdf
 
 
-def get_trench_graph(ref_g_box: networkx.MultiGraph,
-                     ref_building_gdf: geopandas.GeoDataFrame) -> Union[TrenchNetwork, networkx.MultiGraph]:
+def get_trench_graph(ref_g_box: networkx.MultiDiGraph,
+                     ref_building_gdf: geopandas.GeoDataFrame) -> Tuple[TrenchNetwork, networkx.MultiDiGraph]:
     """
     Get trench network
     :param ref_g_box: The Open street maps road graph
@@ -51,7 +51,7 @@ def get_trench_graph(ref_g_box: networkx.MultiGraph,
 
 def get_fiber_planning(ref_trench_network: TrenchNetwork,
                        ref_building_gdf: geopandas.GeoDataFrame,
-                       ref_g_box: networkx.MultiGraph) -> Union[DetailedCost, plt.Figure]:
+                       ref_g_box: networkx.MultiDiGraph) -> Tuple[DetailedCost, plt.Figure]:
     """
     Get the detailed cost breakdown and a plot of the fiber network
     :param ref_trench_network: The Trench Network object
@@ -65,9 +65,9 @@ def get_fiber_planning(ref_trench_network: TrenchNetwork,
     return ref_detailed_cost, ref_fig
 
 
-def plot_graph(ref_g_box: networkx.MultiGraph,
+def plot_graph(ref_g_box: networkx.MultiDiGraph,
                ref_building_gdf: geopandas.GeoDataFrame,
-               trench_graph: networkx.MultiGraph) -> plt.Figure:
+               trench_graph: Optional[networkx.MultiDiGraph]) -> plt.Figure:
     """
     Returns a figure of the plot containing the roads, buildings, and trenches if available
     :param ref_g_box: The open street maps road graph
@@ -87,7 +87,7 @@ def plot_graph(ref_g_box: networkx.MultiGraph,
         ref_fig, ax = ox.plot_graph(trench_graph, bgcolor='white', edge_color=ec,
                                     node_size=0, edge_linewidth=0.6,
                                     show=False, close=False, ax=ax)
-    ox.plot_footprints(building_gdf, ax=ax, color="burlywood", alpha=0.6, show=False, close=False)
+    ox.plot_footprints(ref_building_gdf, ax=ax, color="burlywood", alpha=0.6, show=False, close=False)
     return ref_fig
 
 
