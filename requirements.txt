@@ -1,6 +1,6 @@
 networkx==2.6.3
-osmnx==1.1.1
-pandas==1.2.4
+osmnx==1.2.1
+pandas==1.5.0
 geopandas==0.10.2
 numpy==1.22.3
 scikit-learn==1.0.1
@@ -10,4 +10,4 @@ requests==2.26.0
 streamlit==1.1.0
 pillow==8.3.2
 pyproj==3.2.1
-k-means-constrained==0.6.0
+k-means-constrained==0.7.2
