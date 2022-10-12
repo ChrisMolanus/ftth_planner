@@ -1,4 +1,4 @@
-networkx==2.6.3
+networkx==2.8.7
 osmnx==1.2.1
 pandas==1.5.0
 geopandas==0.10.2
